@@ -1,0 +1,221 @@
+name: Issue Release Bump
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: read
+
+jobs:
+  bump:
+    # Execute only if label 'release' present AND issue opener or current actor is the repository owner
+    if: contains(toJson(github.event.issue.labels.*.name), 'release') && (github.event.issue.user.login == github.repository_owner || github.actor == github.repository_owner)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Abort if unauthorized
+        if: ${{ !(github.event.issue.user.login == github.repository_owner || github.actor == github.repository_owner) }}
+        run: |
+          echo "Not authorized to perform release bump" >&2
+          exit 1
+
+      - name: Extract desired version from issue
+        id: extract
+        env:
+          TITLE: ${{ github.event.issue.title }}
+          BODY: ${{ github.event.issue.body }}
+        run: |
+          set -euo pipefail
+          echo "Issue title: $TITLE" | sed 's/.*/::debug::&/'
+          # Prefer explicit X.Y.Z in title, else first in body
+          CANDIDATE=$(printf "%s\n%s" "$TITLE" "$BODY" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)
+          if [ -z "$CANDIDATE" ]; then
+            echo "No semantic version (X.Y.Z) found in issue title/body. Skipping." >&2
+            echo "found=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "Found candidate version: $CANDIDATE"
+          echo "version=$CANDIDATE" >> $GITHUB_OUTPUT
+          echo "found=true" >> $GITHUB_OUTPUT
+
+      - name: Stop if no version found
+        if: steps.extract.outputs.found != 'true'
+        run: echo "Nothing to do"
+
+      - name: Read current version
+        if: steps.extract.outputs.found == 'true'
+        id: current
+        run: |
+          if [ ! -f package.json ]; then
+            echo "package.json missing" >&2; exit 1; fi
+          CURR=$(jq -r '.version' package.json)
+          echo "Current version: $CURR"
+          echo "current=$CURR" >> $GITHUB_OUTPUT
+
+      - name: Capture HEAD before bump
+        if: steps.extract.outputs.found == 'true'
+        id: prev_head
+        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Compare versions (enforce increment)
+        if: steps.extract.outputs.found == 'true'
+        id: compare
+        run: |
+          NEW="${{ steps.extract.outputs.version }}"
+          CURR="${{ steps.current.outputs.current }}"
+          parse() { IFS='.' read -r a b c <<<"$1"; echo "$a $b $c"; }
+          read cA cB cC < <(parse "$CURR")
+          read nA nB nC < <(parse "$NEW")
+          isGreater=false
+          if [ "$nA" -gt "$cA" ]; then isGreater=true; elif [ "$nA" -eq "$cA" ]; then
+            if [ "$nB" -gt "$cB" ]; then isGreater=true; elif [ "$nB" -eq "$cB" ]; then
+              if [ "$nC" -gt "$cC" ]; then isGreater=true; fi
+            fi
+          fi
+          if [ "$NEW" = "$CURR" ]; then
+            echo "same=true" >> $GITHUB_OUTPUT
+            echo "greater=false" >> $GITHUB_OUTPUT
+            echo "valid=false" >> $GITHUB_OUTPUT
+            echo "reason=Version unchanged" >> $GITHUB_OUTPUT
+            echo "No change: version already $CURR"
+            exit 0
+          fi
+          if [ "$isGreater" != true ]; then
+            echo "same=false" >> $GITHUB_OUTPUT
+            echo "greater=false" >> $GITHUB_OUTPUT
+            echo "valid=false" >> $GITHUB_OUTPUT
+            echo "reason=New version $NEW is not greater than current $CURR" >> $GITHUB_OUTPUT
+            echo "Invalid bump: $NEW <= $CURR" >&2
+            exit 0
+          fi
+          echo "same=false" >> $GITHUB_OUTPUT
+          echo "greater=true" >> $GITHUB_OUTPUT
+          echo "valid=true" >> $GITHUB_OUTPUT
+          echo "Will bump version $CURR -> $NEW"
+
+      - name: Comment invalid version
+        if: steps.compare.outputs.valid == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reason = '${{ steps.compare.outputs.reason }}';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `❌ Bump non valido: ${reason}`
+            });
+
+      - name: Normalize issue title
+        if: steps.compare.outputs.valid == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ steps.extract.outputs.version }}';
+            const wanted = `release: ${version}`;
+            if (context.payload.issue.title !== wanted) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                title: wanted
+              });
+            }
+
+      - name: Update versions in files
+        if: steps.compare.outputs.valid == 'true'
+        id: bump_files
+        env:
+          NEW_VERSION: ${{ steps.extract.outputs.version }}
+        run: |
+          set -euo pipefail
+          echo "Bumping to $NEW_VERSION"
+          # 1) package.json via jq
+          tmp=$(mktemp)
+          jq --arg v "$NEW_VERSION" '.version=$v' package.json > "$tmp" && mv "$tmp" package.json
+          # 1b) addon-config.json (addonVersion) if exists
+          if [ -f addon-config.json ]; then
+            node -e 'const fs=require("fs");const p="addon-config.json";let o=JSON.parse(fs.readFileSync(p,"utf8"));o.addonVersion=process.env.NEW_VERSION;fs.writeFileSync(p, JSON.stringify(o,null,4)+"\n");'
+            git add addon-config.json || true
+          fi
+          # 2) package-lock.json (if exists) – replace occurrences of previous root version
+          if [ -f package-lock.json ]; then
+            CURR_PKG=$(jq -r '.version' package-lock.json || true)
+            if [ -n "$CURR_PKG" ]; then
+              sed -i "s/\"version\": \"$CURR_PKG\"/\"version\": \"$NEW_VERSION\"/g" package-lock.json || true
+            else
+              sed -i -E "0,/\"version\": \"[0-9]+\.[0-9]+\.[0-9]+\"/s//\"version\": \"$NEW_VERSION\"/" package-lock.json || true
+            fi
+          fi
+          # 3) src/addon.ts baseManifest version field (first occurrence inside file)
+          if [ -f src/addon.ts ]; then
+            node -e 'const fs=require("fs");const p="src/addon.ts";let t=fs.readFileSync(p,"utf8");const rx=/(const baseManifest:[^{]*\{[\s\S]*?version:\s*")(\d+\.\d+\.\d+)("[,])/;if(!rx.test(t)){console.error("Version field in baseManifest not found – aborting");process.exit(1);} t=t.replace(rx, `$1${process.env.NEW_VERSION}$3`);fs.writeFileSync(p,t);'
+            git add src/addon.ts || true
+          fi
+          echo "Files updated. Preview of package.json version:" $(jq -r .version package.json)
+          git add package.json || true
+          [ -f package-lock.json ] && git add package-lock.json || true
+          if git diff --cached --quiet; then
+            echo "No staged changes after update – skipping commit"; echo "commit_made=false" >> $GITHUB_OUTPUT; exit 0; fi
+          git config user.name 'github-actions'
+          git config user.email 'github-actions@users.noreply.github.com'
+          git commit -m "fix: bump version"
+          NEW_SHA=$(git rev-parse HEAD)
+          if [ "$NEW_SHA" != "${{ steps.prev_head.outputs.sha }}" ]; then
+            echo "commit_made=true" >> $GITHUB_OUTPUT
+          else
+            echo "commit_made=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Push changes
+        if: steps.compare.outputs.valid == 'true' && steps.bump_files.outputs.commit_made == 'true'
+        run: git push origin HEAD:${GITHUB_REF_NAME}
+
+      - name: Comment on issue
+        if: steps.extract.outputs.found == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const valid = '${{ steps.compare.outputs.valid }}' === 'true';
+            const same = '${{ steps.compare.outputs.same }}' === 'true';
+            const newVersion = '${{ steps.extract.outputs.version }}';
+            const commitSha = process.env.GITHUB_SHA.substring(0,7);
+            let body;
+            if (!valid) {
+              body = `❌ Versione non applicata. Motivo: ${'${{ steps.compare.outputs.reason }}'}`;
+            } else if (same) {
+              body = `🔁 Version already at ${newVersion}. No changes committed.`;
+            } else {
+              body = `✅ Bumped version to **${newVersion}**. Commit: ${commitSha}`;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+      - name: Close issue
+        if: steps.bump_files.outputs.commit_made == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed'
+            });
+
+      - name: Fail if bump expected but no commit
+        if: steps.compare.outputs.valid == 'true' && steps.bump_files.outputs.commit_made != 'true'
+        run: |
+          echo "Expected a commit but none was created" >&2
+          exit 1

@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.1.1](https://github.com/qwertyuiop8899/streamvix/compare/v1.1.0...v1.1.1) (2025-09-10)
+
+
+### Bug Fixes
+
+* bump version ([924ac5a](https://github.com/qwertyuiop8899/streamvix/commit/924ac5a1bdc25cf10b8c5638312bf6c50ebc1b0d))
+
+## [1.1.0](https://github.com/qwertyuiop8899/streamvix/compare/v1.0.46...v1.1.0) (2025-09-10)
+
+
+### Features
+
+* **normalize:** add "Fullmetal Alchemist: Brotherhood" ([74debd4](https://github.com/qwertyuiop8899/streamvix/commit/74debd4735bdb07dcb20414ae6f63fcdbaacbb60))
+
+
+### Bug Fixes
+
+* release aw fix ([9c55a37](https://github.com/qwertyuiop8899/streamvix/commit/9c55a37409e18d2ed9ba690cb45b7189d0c88357))
+
 ## [1.0.46](https://github.com/qwertyuiop8899/streamvix/compare/v1.0.45...v1.0.46) (2025-09-10)
 
 
