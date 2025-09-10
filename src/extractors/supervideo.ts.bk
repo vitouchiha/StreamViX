@@ -3,26 +3,14 @@
 // 
 
 import { HostExtractor, ExtractResult, ExtractorContext, normalizeUrl, parseSizeToBytes } from './base';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-declare const require: any;
-import { nextProxyPair } from '../config/proxies';
 import type { StreamForStremio } from '../types/animeunity';
 // NOTE thanks to webstreamr for the logic
-interface RawResp { status:number; text:string|null }
-async function fetchRaw(url: string, referer?: string, proxy?: string): Promise<RawResp> {
-  const headers: Record<string,string> = { 'User-Agent':'Mozilla/5.0' };
-  if (referer) headers.Referer = referer;
-  let dispatcher: any = undefined;
-  if (proxy) {
-    try { const { ProxyAgent } = require('undici'); dispatcher = new ProxyAgent(proxy); } catch {}
-  }
+async function fetchText(url: string, referer?: string): Promise<string | null> {
   try {
-    const r = await fetch(url, { headers, dispatcher } as any);
-    const t = await r.text().catch(()=>null);
-    return { status: r.status, text: r.ok ? t : t };
-  } catch { return { status:-1, text:null }; }
+    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0', ...(referer ? { Referer: referer } : {}) } as any });
+    if (!r.ok) return null; return await r.text();
+  } catch { return null; }
 }
-async function fetchText(url: string, referer?: string, proxy?: string){ const r = await fetchRaw(url, referer, proxy); return r.text; }
 
 function extractPackedFile(html: string): { m3u8?: string; size?: number; height?: number; title?: string } {
   // Look for sources:[{file:"..." pattern
@@ -40,8 +28,8 @@ export class SuperVideoExtractor implements HostExtractor {
   id = 'supervideo';
   supports(url: string): boolean { return /supervideo/.test(url); }
 
-  private async resolveSupervideo(link: string, proxy?: string): Promise<string | null> {
-    const html = await fetchText(link, undefined, proxy);
+  private async resolveSupervideo(link: string): Promise<string | null> {
+    const html = await fetchText(link);
     if (!html) return null;
     const m = html.match(/}\('(.+?)',.+,'(.+?)'\.split/);
     if (!m) return null;
@@ -64,18 +52,9 @@ export class SuperVideoExtractor implements HostExtractor {
   }
 
   async extract(rawUrl: string, ctx: ExtractorContext): Promise<ExtractResult> {
-    const debug = true; // debug statico richiesto
-  const normalized = normalizeUrl(rawUrl);
-  const u = new URL(normalized);
-  let id = u.pathname.split('/').pop() || '';
-  id = id.replace(/^[e-]+/, '').replace(/\.html$/,''); // pulizia minima
-  // Se l'URL originale aveva già /e/ manteniamo quell'id esatto
-  const embedUrl = `${u.origin}/e/${id}`;
-  if (debug) console.log('[SV][embed-url]', embedUrl, 'from', rawUrl);
-  const streams: StreamForStremio[] = [];
-
-  // Primo tentativo (senza proxy) sull'embed canonico
-  const direct = await this.resolveSupervideo(embedUrl);
+    let url = normalizeUrl(rawUrl).replace('/embed-', '/').replace('/e/', '/');
+    const direct = await this.resolveSupervideo(url);
+    const streams: StreamForStremio[] = [];
     if (direct) {
       // Try to enrich with size/res similar to provider getHlsInfo logic
       let resPart = '';
@@ -122,63 +101,23 @@ export class SuperVideoExtractor implements HostExtractor {
       segs.push('supervideo');
       const title = `${baseTitle} • [ITA]` + (segs.length? `\n💾 ${segs.join(' • ')}`: '');
       streams.push({ title, url: direct, behaviorHints: { notWebReady: true } });
-      if (streams.length) {
-        if (debug) console.log('[SV][first-attempt direct ok]', embedUrl);
-        return { streams };
-      }
-    }
-    // Embed parse (senza proxy)
-  let html = await fetchText(embedUrl, ctx.referer);
-    if (html) {
-      const { m3u8, size, height, title } = extractPackedFile(html);
-      if (m3u8) {
-        const baseTitle = ctx.titleHint || title || 'SuperVideo';
-        let sizePart = '';
-        if (size) sizePart = size/1024/1024/1024>1? (size/1024/1024/1024).toFixed(2)+'GB': (size/1024/1024).toFixed(0)+'MB';
-        const segs: string[] = [];
-        if (sizePart) segs.push(sizePart);
-        if (height) segs.push(`${height}p`);
-        segs.push('supervideo');
-        const formatted = `${baseTitle} • [ITA]` + (segs.length? `\n💾 ${segs.join(' • ')}`:'');
-        streams.push({ title: formatted, url: m3u8, behaviorHints: { notWebReady: true } });
-      }
-    }
-
-    if (streams.length) {
-  if (debug) console.log('[SV][first-attempt embed ok]', embedUrl);
       return { streams };
     }
-
-    // --- PROXY FALLBACK (sempre se 0 streams) ---
-    if (debug) console.log('[SV][proxy trigger] 0 streams after first attempt', embedUrl);
-    const proxies = nextProxyPair();
-    for (let i=0;i<proxies.length;i++) {
-      const p = proxies[i];
-      if (debug) console.log('[SV][proxy try]', p.replace(/:\\w+@/,'://***@'));
-      const viaDirect = await this.resolveSupervideo(embedUrl, p);
-      if (viaDirect) {
-        if (debug) console.log('[SV][proxy success direct]');
-        return { streams: [{ title: (ctx.titleHint||'SuperVideo') + ' • [ITA]\n💾 supervideo', url: viaDirect, behaviorHints:{ notWebReady:true } }] };
-      }
-      const viaHtml = await fetchText(embedUrl, ctx.referer, p);
-      if (viaHtml) {
-        const { m3u8, size, height, title } = extractPackedFile(viaHtml);
-        if (m3u8) {
-          if (debug) console.log('[SV][proxy success embed]');
-          let sizePart = '';
-          if (size) sizePart = size/1024/1024/1024>1? (size/1024/1024/1024).toFixed(2)+'GB': (size/1024/1024).toFixed(0)+'MB';
-          const segs: string[] = [];
-          if (sizePart) segs.push(sizePart);
-          if (height) segs.push(`${height}p`);
-          segs.push('supervideo');
-          const baseTitle = ctx.titleHint || title || 'SuperVideo';
-          const formatted = `${baseTitle} • [ITA]` + (segs.length? `\n💾 ${segs.join(' • ')}`:'');
-          return { streams: [{ title: formatted, url: m3u8, behaviorHints:{ notWebReady:true } }] };
-        }
-      }
-      if (debug) console.log('[SV][proxy fail]', i+1);
+    // Fallback: fetch embed page and parse packed sources
+    const html = await fetchText(url, ctx.referer);
+    if (!html) return { streams: [] };
+    const { m3u8, size, height, title } = extractPackedFile(html);
+    if (m3u8) {
+      const baseTitle = ctx.titleHint || title || 'SuperVideo';
+      let sizePart = '';
+      if (size) sizePart = size/1024/1024/1024>1? (size/1024/1024/1024).toFixed(2)+'GB': (size/1024/1024).toFixed(0)+'MB';
+      const segs: string[] = [];
+      if (sizePart) segs.push(sizePart);
+      if (height) segs.push(`${height}p`);
+      segs.push('supervideo');
+      const formatted = `${baseTitle} • [ITA]` + (segs.length? `\n💾 ${segs.join(' • ')}`:'');
+      streams.push({ title: formatted, url: m3u8, behaviorHints: { notWebReady: true } });
     }
-  if (debug) console.log('[SV][proxy exhausted] still 0 streams', embedUrl);
-    return { streams: [] };
+    return { streams };
   }
 }
