@@ -70,6 +70,7 @@ interface AnimeUnityStreamData {
 }
 
 // Funzione universale per ottenere il titolo inglese da qualsiasi ID
+// Aggiunto fallback Kitsu diretto (titles.en) se manca MAL mapping, come in AnimeSaturn
 async function getEnglishTitleFromAnyId(id: string, type: 'imdb'|'tmdb'|'kitsu'|'mal', tmdbApiKey?: string): Promise<string> {
   let malId: string | null = null;
   let tmdbId: string | null = null;
@@ -95,6 +96,21 @@ async function getEnglishTitleFromAnyId(id: string, type: 'imdb'|'tmdb'|'kitsu'|
     const mappingsResp = await (await fetch(`https://kitsu.io/api/edge/anime/${id}/mappings`)).json();
     const malMapping = mappingsResp.data?.find((m: any) => m.attributes.externalSite === 'myanimelist/anime');
     malId = malMapping?.attributes?.externalId?.toString() || null;
+    if (!malId) {
+      // Fallback: usa direttamente titles.en dal record principale se disponibile
+      try {
+        const kitsuMain = await (await fetch(`https://kitsu.io/api/edge/anime/${id}`)).json();
+        const enTitle = kitsuMain?.data?.attributes?.titles?.en;
+        if (enTitle) {
+          console.log(`[UniversalTitle][KitsuFallback] Titolo inglese diretto da Kitsu (no MAL mapping): ${enTitle}`);
+          return enTitle;
+        } else {
+          console.warn(`[UniversalTitle][KitsuFallback] Nessun titles.en disponibile per Kitsu ${id}`);
+        }
+      } catch (e) {
+        console.warn(`[UniversalTitle][KitsuFallback] Errore recuperando titles.en per Kitsu ${id}:`, e);
+      }
+    }
   } else if (type === 'mal') {
     malId = id;
   }
@@ -141,6 +157,7 @@ async function getEnglishTitleFromAnyId(id: string, type: 'imdb'|'tmdb'|'kitsu'|
 }
 
 function filterAnimeResults(results: { version: AnimeUnitySearchResult; language_type: string }[], englishTitle: string) {
+  // LOGICA LEGACY: accetta solo match esatti (base) + varianti (ita/cr)
   const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
   const base = norm(englishTitle);
   const allowed = [
@@ -150,24 +167,48 @@ function filterAnimeResults(results: { version: AnimeUnitySearchResult; language
     `${base} (ita) (cr)`
   ];
   const isAllowed = (title: string) => {
-    const t = norm(title.replace(/\s*\([^)]*\)/g, match => match.toLowerCase()));
+    const t = norm(title.replace(/\s*\([^)]*\)/g, m => m.toLowerCase()));
     return allowed.some(a => t === a);
   };
   const filtered = results.filter(r => isAllowed(r.version.name));
-  console.log(`[UniversalTitle] Risultati prima del filtro:`, results.map(r => r.version.name));
-  console.log(`[UniversalTitle] Risultati dopo il filtro:`, filtered.map(r => r.version.name));
+  console.log(`[UniversalTitle][Filter][Legacy] Risultati prima del filtro:`, results.map(r => r.version.name));
+  console.log(`[UniversalTitle][Filter][Legacy] Risultati dopo il filtro:`, filtered.map(r => r.version.name));
   return filtered;
 }
 
-// Funzione di normalizzazione custom per la ricerca
+// ==== AUTO-NORMALIZATION-EXACT-MAP-START ====
+const exactMap: Record<string,string> = {
+
+    "Attack on Titan: Final Season - The Final Chapters": "Attack on Titan Final Season THE FINAL CHAPTERS Special 1",
+    "Attack on Titan: The Final Season - Final Chapters Part 2": "Attack on Titan Final Season THE FINAL CHAPTERS Special 2",   
+
+    // << AUTO-INSERT-EXACT >> (non rimuovere questo commento)
+};
+// ==== AUTO-NORMALIZATION-EXACT-MAP-END ====
+
+// ==== AUTO-NORMALIZATION-GENERIC-MAP-START ====
+const genericMap: Record<string,string> = {
+
+
+  // << AUTO-INSERT-GENERIC >> (non rimuovere questo commento)
+  // Qui puoi aggiungere altre normalizzazioni custom
+};
+// ==== AUTO-NORMALIZATION-GENERIC-MAP-END ====
+
+// Funzione di normalizzazione per la ricerca (fase base + generic)
 function normalizeTitleForSearch(title: string): string {
+  // Se exact map colpisce il titolo originale, usiamo direttamente il valore e saltiamo tutto il resto.
+  if (Object.prototype.hasOwnProperty.call(exactMap, title)) {
+    const mapped = exactMap[title];
+    console.log(`[AnimeUnity][ExactMap] Hit: "${title}" -> "${mapped}"`);
+    return mapped;
+  }
+  // LOGICA LEGACY per i NON exact: usare un dizionario di replacements statico (come vecchio codice)
   const replacements: Record<string, string> = {
-    'Attack on Titan': "L'attacco dei Giganti",
     'Season': '',
     'Shippuuden': 'Shippuden',
     '-': '',
     'Ore dake Level Up na Ken': 'Solo Leveling',
-    // Qui puoi aggiungere altre normalizzazioni custom
   };
   let normalized = title;
   for (const [key, value] of Object.entries(replacements)) {
@@ -326,6 +367,12 @@ export class AnimeUnityProvider {
   async handleTitleRequest(title: string, seasonNumber: number | null, episodeNumber: number | null, isMovie = false): Promise<{ streams: StreamForStremio[] }> {
     const normalizedTitle = normalizeTitleForSearch(title);
     console.log(`[AnimeUnity] Titolo normalizzato per ricerca: ${normalizedTitle}`);
+    // Se il titolo originale è una chiave dell'exactMap allora saltiamo qualsiasi filtro successivo:
+    // l'intento dell'utente è: se la ricerca parte da una chiave exactMap, NON applicare filterAnimeResults
+    const skipFilter = Object.prototype.hasOwnProperty.call(exactMap, title);
+    if (skipFilter) {
+      console.log(`[AnimeUnity][ExactMap] Skip filtro: titolo di input corrisponde a chiave exactMap -> "${title}"`);
+    }
     let animeVersions = await this.searchAllVersions(normalizedTitle);
     // Fallback: se non trova nulla, prova anche con titoli alternativi
     if (!animeVersions.length) {
@@ -370,7 +417,11 @@ export class AnimeUnityProvider {
         }
       }
     }
-    animeVersions = filterAnimeResults(animeVersions, normalizedTitle);
+    if (!skipFilter) {
+      animeVersions = filterAnimeResults(animeVersions, normalizedTitle);
+    } else {
+      console.log('[AnimeUnity][ExactMap] Uso risultati grezzi senza filtro (exactMap).');
+    }
     if (!animeVersions.length) {
       console.warn('[AnimeUnity] Nessun risultato trovato per il titolo:', normalizedTitle);
       return { streams: [] };

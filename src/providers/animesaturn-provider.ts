@@ -85,6 +85,21 @@ async function getEnglishTitleFromAnyId(id: string, type: 'imdb'|'tmdb'|'kitsu'|
     const mappingsResp = await (await fetch(`https://kitsu.io/api/edge/anime/${id}/mappings`)).json();
     const malMapping = mappingsResp.data?.find((m: any) => m.attributes.externalSite === 'myanimelist/anime');
     malId = malMapping?.attributes?.externalId?.toString() || null;
+    if (!malId) {
+      // Fallback Kitsu diretto: usa SOLO titles.en dal record principale
+      try {
+        const kitsuMain = await (await fetch(`https://kitsu.io/api/edge/anime/${id}`)).json();
+        const enTitle = kitsuMain?.data?.attributes?.titles?.en;
+        if (enTitle) {
+          console.log(`[UniversalTitle][KitsuFallback] Titolo inglese diretto da Kitsu (no MAL mapping): ${enTitle}`);
+          return enTitle;
+        } else {
+          console.warn(`[UniversalTitle][KitsuFallback] Nessun titles.en disponibile per Kitsu ${id}`);
+        }
+      } catch (e) {
+        console.warn(`[UniversalTitle][KitsuFallback] Errore recuperando titles.en per Kitsu ${id}:`, e);
+      }
+    }
   } else if (type === 'mal') {
     malId = id;
   }
@@ -174,31 +189,48 @@ function filterAnimeResults(
 
 // Funzione di normalizzazione custom per la ricerca
 function normalizeTitleForSearch(title: string): string {
-  const replacements: Record<string, string> = {
-    'Attack on Titan': "L'attacco dei Giganti",
-    'Season': '',
-    'Shippuuden': 'Shippuden',
-    '-': '',
+  // 1. Mappature esatte inserire qui titoli che hanno in mal i - (devono avvenire prima per evitare che le sostituzioni generiche rovinino la chiave)
+  // ==== AUTO-NORMALIZATION-EXACT-MAP-START ====
+  const exactMap: Record<string,string> = {
+    "Demon Slayer: Kimetsu no Yaiba - The Movie: Infinity Castle": "Demon Slayer: Kimetsu no Yaiba Infinity Castle",    
+    "Attack on Titan: The Final Season - Final Chapters Part 2": "L'attacco dei Giganti: L'ultimo attacco",
     'Ore dake Level Up na Ken': 'Solo Leveling',
     'Lupin the Third: The Woman Called Fujiko Mine': 'Lupin III - La donna chiamata Fujiko Mine ',
     "Slam Dunk: Roar!! Basket Man Spiriy": "Slam Dunk: Hoero Basketman-damashii! Hanamichi to Rukawa no Atsuki Natsu",
     "Parasyte: The Maxim": "Kiseijuu",
-    "Attack on Titan OAD": "L'attacco dei Giganti: Il taccuino di Ilse Sub ITA",
+    "Attack on Titan OAD": "L'attacco dei Giganti: Il taccuino di Ilse",
     "Fullmetal Alchemist: Brotherhood": "Fullmetal Alchemist Brotherhood",
     "Slam Dunk: Roar!! Basket Man Spirit": "Slam Dunk: Hoero Basketman-damashii! Hanamichi to Rukawa no Atsuki Natsu",
     "Slam Dunk: Shohoku Maximum Crisis! Burn Sakuragi Hanamichi": "Slam Dunk: Shouhoku Saidai no Kiki! Moero Sakuragi Hanamichi",
     "Slam Dunk: National Domination! Sakuragi Hanamichi": "Slam Dunk: Zenkoku Seiha Da! - Sakuragi Hanamichi",
-
-    // Qui puoi aggiungere altre normalizzazioni custom
+    // << AUTO-INSERT-EXACT >> (non rimuovere questo commento)
   };
-  let normalized = title;
-  for (const [key, value] of Object.entries(replacements)) {
-    normalized = normalized.replace(key, value);
+  // ==== AUTO-NORMALIZATIOmN-EXACT-MAP-END ====
+  // Se il titolo originale ha una mappatura esatta, usala e NON applicare altre normalizzazioni
+  const hasExact = Object.prototype.hasOwnProperty.call(exactMap, title);
+  let normalized = hasExact ? exactMap[title] : title;
+
+  if (!hasExact) {
+    // 2. Replacements generici (solo se non è stata applicata una exact per non corrompere l'output voluto)
+    // ==== AUTO-NORMALIZATION-GENERIC-MAP-START ====
+    const generic: Record<string,string> = {
+      'Attack on Titan': "L'attacco dei Giganti",
+      'Season': '',
+      'Shippuuden': 'Shippuden',
+      // << AUTO-INSERT-GENERIC >> (non rimuovere questo commento)
+      // Qui puoi aggiungere altre normalizzazioni custom (legacy placeholder)
+    };
+    // ==== AUTO-NORMALIZATION-GENERIC-MAP-END ====
+    for (const [k,v] of Object.entries(generic)) {
+      if (normalized.includes(k)) normalized = normalized.replace(k, v);
+    }
+    // 3. Cleanup leggero SOLO per casi non exact (evita di rimuovere trattini intenzionali della mappa esatta)
+    normalized = normalized.replace(/\s+-\s+/g,' ');
+    if (normalized.includes('Naruto:')) normalized = normalized.replace(':','');
+    // 4. Collassa spazi multipli
+    normalized = normalized.replace(/\s{2,}/g,' ').trim();
   }
-  if (normalized.includes('Naruto:')) {
-    normalized = normalized.replace(':', '');
-  }
-  return normalized.trim();
+  return normalized;
 }
 
 // Funzione di normalizzazione caratteri speciali per titoli
@@ -400,6 +432,7 @@ export class AnimeSaturnProvider {
     const normalizedTitle = normalizeTitleForSearch(title);
     console.log(`[AnimeSaturn] Titolo normalizzato per ricerca: ${normalizedTitle}`);
     console.log(`[AnimeSaturn] MAL ID passato a searchAllVersions:`, malId ? malId : '(nessuno)');
+  console.log('[AnimeSaturn] Query inviata allo scraper (post-normalize):', normalizedTitle);
     let animeVersions = await this.searchAllVersions(normalizedTitle, malId);
     animeVersions = filterAnimeResults(animeVersions, normalizedTitle, malId);
     // Fallback MAL -> loose: se filtrando con MAL non troviamo nulla, riprova senza malId

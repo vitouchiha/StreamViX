@@ -1,5 +1,52 @@
 # Changelog
 
+## [1.5.1](https://github.com/qwertyuiop8899/streamvix/compare/v1.5.0...v1.5.1) (2025-09-26)
+
+
+### Bug Fixes
+
+* mpd ([b506850](https://github.com/qwertyuiop8899/streamvix/commit/b506850c1aa53564c4de96988aaad17ab1e4f6f2))
+
+## [1.5.0](https://github.com/qwertyuiop8899/streamvix/compare/v1.4.0...v1.5.0) (2025-09-25)
+
+
+### Features
+
+* **normalize-au:** add "Attack on Titan: Final Season - The Final Chapters" ([995f397](https://github.com/qwertyuiop8899/streamvix/commit/995f3974c63c3ce701b7bc3f7e9e9edbdc22dd48))
+* **normalize-au:** add "Attack on Titan: The Final Season - Final Chapters Part 2" ([2ceabfb](https://github.com/qwertyuiop8899/streamvix/commit/2ceabfb8a2787bdb835ba752c15f4d212939d309))
+
+
+### Bug Fixes
+
+* attackoftitan last 2 films ([88dc16c](https://github.com/qwertyuiop8899/streamvix/commit/88dc16c9df00a727a9c052586da4c2635d219ae1))
+* AU AS match ([edc6a1c](https://github.com/qwertyuiop8899/streamvix/commit/edc6a1c68eb856ea547283e66106386dd86ab847))
+
+## [1.4.0](https://github.com/qwertyuiop8899/streamvix/compare/v1.3.0...v1.4.0) (2025-09-25)
+
+
+### Features
+
+* **normalize:** add "Attack on Titan: Final Season - The Final Chapters" ([2264fcb](https://github.com/qwertyuiop8899/streamvix/commit/2264fcbbbba449a922e9a0b47579a1a68e3e1eb6))
+
+
+### Bug Fixes
+
+* as normalization ([f4f839f](https://github.com/qwertyuiop8899/streamvix/commit/f4f839fcf44e467e0536dce1b9c4bf67da131f36))
+* aw fallback ([298909f](https://github.com/qwertyuiop8899/streamvix/commit/298909fda56a7b00bb30397c808e2ebded613dc7))
+
+## [1.3.0](https://github.com/qwertyuiop8899/streamvix/compare/v1.2.5...v1.3.0) (2025-09-25)
+
+
+### Features
+
+* **normalize:** add "Demon Slayer: Kimetsu no Yaiba - The Movie: Infinity Castle" ([6118b4b](https://github.com/qwertyuiop8899/streamvix/commit/6118b4b7e17919acf87e6d8af131001ebd6e517f))
+
+
+### Bug Fixes
+
+* animefix ([66ea106](https://github.com/qwertyuiop8899/streamvix/commit/66ea106cfc0ca1423d0f093e2c8fde375a634702))
+* domains update ([fe083d0](https://github.com/qwertyuiop8899/streamvix/commit/fe083d0989d7c387e4effa34d5cd3b63b0aa2b96))
+
 ## [1.2.5](https://github.com/qwertyuiop8899/streamvix/compare/v1.2.4...v1.2.5) (2025-09-23)
 
 

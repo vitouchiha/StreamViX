@@ -410,17 +410,6 @@ export class AnimeWorldProvider {
     if (!this.config.enabled) return { streams: [] };
     try {
       const { kitsuId, seasonNumber, episodeNumber, isMovie } = this.kitsuProvider.parseKitsuId(kitsuIdString);
-      // Fetch startDate for fallback filter-year logic (only for kitsu ids)
-      try {
-        const metaResp = await fetch(`https://kitsu.io/api/edge/anime/${kitsuId}`);
-        if (metaResp.ok) {
-          const metaJson: any = await metaResp.json();
-          const startDate: string | undefined = metaJson?.data?.attributes?.startDate;
-          if (startDate) (this as any)._lastKitsuStartDate = startDate;
-        }
-      } catch (e) {
-        console.warn('[AnimeWorld] startDate fetch failed for kitsu id', kitsuId, e);
-      }
   // NOTE (Approach 2 active): We now resolve a universal EN title via MAL/Kitsu mappings (getEnglishTitleFromAnyId)
   // Old approach (commented) used the raw Kitsu canonical title directly, e.g.:
   //   const kitsuRaw = await this.kitsuProvider.fetchTitle(kitsuId)  <-- NON PIU' USATO
@@ -501,16 +490,7 @@ export class AnimeWorldProvider {
   console.log('[AnimeWorld] Versions found:', versions.length);
   const debugLangCounts = versions.reduce((acc: any, v: any) => { acc[v.language_type] = (acc[v.language_type]||0)+1; return acc; }, {} as Record<string, number>);
   console.log('[AnimeWorld] Language type counts:', debugLangCounts);
-    if (!versions.length) {
-      // Fallback: tenta la vecchia logica filter?year= se abbiamo una startDate disponibile nel titolo context (iniettata via placeholder speciale)
-      // Poiche' non passiamo direttamente la data qui, la memorizzeremo in un campo opzionale su this (set da handleKitsuRequest) oppure usiamo env override.
-      const fallbackDate = (this as any)._lastKitsuStartDate as string | undefined;
-      if (fallbackDate) {
-        const fb = await this.fallbackFilterYearSearch(normalized, fallbackDate, isMovie, episodeNumber, seasonNumber);
-        if (fb.streams.length) return fb;
-      }
-      return { streams: [] };
-    }
+    if (!versions.length) return { streams: [] };
   // === STRICT BASE SLUG FILTER (avoid including rewrite/variants when base requested) ===
   try {
     const normSlugKey = normalized.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
@@ -535,20 +515,6 @@ export class AnimeWorldProvider {
       if (!versions.length) {
   // NUOVO COMPORTAMENTO: nessuna corrispondenza ESATTA -> nessun risultato (non ripristinare lista originale)
   console.log('[AnimeWorld] Strict filter produced 0 results, NOT restoring broad matches (no full title match).');
-  // Tenta ORA il fallback filter-year (non era stato tentato prima perche' avevamo versioni >0 prima del filtro)
-  try {
-    const fallbackDate = (this as any)._lastKitsuStartDate as string | undefined;
-    if (fallbackDate) {
-      console.log('[AnimeWorld] Invoking fallbackFilterYearSearch AFTER strict filter zero-match, date=', fallbackDate);
-      const fb = await this.fallbackFilterYearSearch(normalized, fallbackDate, isMovie, episodeNumber, seasonNumber);
-      if (fb.streams.length) return fb;
-      console.log('[AnimeWorld] fallbackFilterYearSearch produced 0 streams after strict filter.');
-    } else {
-      console.log('[AnimeWorld] No fallback date available (_lastKitsuStartDate undefined), cannot run filter-year fallback.');
-    }
-  } catch (e) {
-    console.warn('[AnimeWorld] fallbackFilterYearSearch post-strict error (ignored):', e);
-  }
   return { streams: [] };
       }
     } else {
@@ -705,68 +671,6 @@ export class AnimeWorldProvider {
   const streams = streamObjs.filter(Boolean) as StreamForStremio[];
   console.log(`[AnimeWorld] Total AW streams produced: ${streams.length} (parallel batch ${Date.now() - tBatch}ms)`);
   return { streams };
-  }
-
-  /**
-   * Fallback che replica la logica del vecchio script: usa la ricerca filter?year=YYYY&keyword=TitoloTroncato
-   * - Usa Python scraper con --date per forzare pattern identico all'originale (prima prova con anno, poi senza)
-   * - Prende i primi 2 risultati compatibili (data match gia' gestita nello scraper)
-   * - get_episodes + get_stream come normale, ma etichetta versioni come Original / Italian come ordine di apparizione
-   */
-  private async fallbackFilterYearSearch(normalizedTitle: string, startDate: string, isMovie: boolean, episodeNumber: number | null, seasonNumber: number | null): Promise<{ streams: StreamForStremio[] }> {
-    try {
-      console.log('[AnimeWorld][FallbackFilter] Triggered with title=', normalizedTitle, 'date=', startDate);
-      // Emula lo "split(':')[0]" aggressivo del vecchio script: tronca al primo ':'
-      let query = normalizedTitle.includes(':') ? normalizedTitle.split(':')[0] : normalizedTitle;
-      // Nel vecchio script poi spazio -> '+' prima della costruzione URL; lo scraper fa gia' replace interno (spazi -> +) prima di generare URL, passiamo quindi query semplice
-      const results = await invokePython(['search','--query', query,'--date', startDate]);
-      if (!Array.isArray(results) || !results.length) {
-        console.log('[AnimeWorld][FallbackFilter] No results from filter year search');
-        return { streams: [] };
-      }
-      // Prendi massimo due risultati (ordine naturale) per imitare i/0 Original i/1 Italian
-      const picked = results.slice(0,2);
-      const streams: StreamForStremio[] = [];
-      let idx = 0;
-      for (const r of picked) {
-        const slug = r.slug || r.id || r.name;
-        if (!slug) continue;
-        try {
-          const episodes: AnimeWorldEpisode[] = await invokePython(['get_episodes','--anime-slug', slug]);
-          if (!episodes || !episodes.length) continue;
-          let target: AnimeWorldEpisode | undefined;
-            if (isMovie) target = episodes[0];
-            else if (episodeNumber != null) target = episodes.find(e => e.number === episodeNumber);
-            else target = episodes[0];
-          if (!target) continue; // episodio richiesto non trovato
-          const epNum = episodeNumber != null ? episodeNumber : target.number;
-          let streamData: any = null;
-          try {
-            streamData = await invokePython(['get_stream','--anime-slug', slug, ...(epNum != null ? ['--episode', String(epNum)] : [])]);
-          } catch (e) {
-            console.warn('[AnimeWorld][FallbackFilter] get_stream error', slug, e);
-            continue;
-          }
-          const mp4 = streamData?.mp4_url;
-          if (!mp4) continue;
-          const lang = idx === 0 ? 'Original' : 'Italian';
-          const sNum = seasonNumber || 1;
-          let baseName = (r.name || slug || normalizedTitle).toString().trim();
-          if (baseName.includes('\n')) baseName = baseName.replace(/\s+/g,' ').trim();
-          let titleStream = `${baseName} ▪ ${lang === 'Original' ? 'SUB' : 'ITA'} ▪ S${sNum}`;
-          if (episodeNumber) titleStream += `E${episodeNumber}`;
-          streams.push({ title: titleStream, url: mp4, behaviorHints: { bingeGroup: 'animeworld-fallback' } });
-          idx++;
-        } catch (e) {
-          console.warn('[AnimeWorld][FallbackFilter] error processing slug', r.slug, e);
-        }
-      }
-      console.log('[AnimeWorld][FallbackFilter] Produced streams:', streams.length);
-      return { streams };
-    } catch (e) {
-      console.error('[AnimeWorld][FallbackFilter] failure', e);
-      return { streams: [] };
-    }
   }
 }
 

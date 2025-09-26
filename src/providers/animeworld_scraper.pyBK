@@ -233,7 +233,6 @@ def main():
     sub = p.add_subparsers(dest='cmd', required=True)
     s1 = sub.add_parser('search')
     s1.add_argument('--query', required=True)
-    s1.add_argument('--date', required=False, help='Exact start date YYYY-MM-DD (Kitsu startDate) for year filter & date match')
     s2 = sub.add_parser('get_episodes')
     s2.add_argument('--anime-slug', required=True)
     s3 = sub.add_parser('get_stream')
@@ -242,7 +241,7 @@ def main():
     args = p.parse_args()
     try:
         if args.cmd == 'search':
-            print(json.dumps(search(args.query, args.date), indent=4))
+            print(json.dumps(search(args.query), indent=4))
         elif args.cmd == 'get_episodes':
             print(json.dumps(get_episodes(args.anime_slug), indent=4))
         elif args.cmd == 'get_stream':
