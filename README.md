@@ -62,6 +62,66 @@ StreamViX utilizza un **sistema di proxy unificato** che semplifica la configura
 - `Enable MPD Streams`: (true/false) Non funzionanti lasciare false
 - `Enable Live TV`: Abilita per vedere live tv (true/false)
   
+### 🖥️ Variabile Ambiente per Installazioni Locali / VPS (FHD VixSrc)
+
+Per ottenere correttamente i flussi VixSrc in Full HD (forzatura `&h=1` + endpoint synthetic) nelle installazioni **locali o su VPS** è necessario impostare una variabile d'ambiente che dica all'estrattore qual è la BASE URL pubblicamente raggiungibile del tuo addon.
+
+Imposta (SENZA lo slash finale):
+
+```
+ADDON_BASE_URL=https://tuo-dominio-o-ip
+```
+
+Note importanti:
+* Nessuno slash finale (✅ `https://mioaddon.example` ❌ `https://mioaddon.example/`).
+* Serve solo su installazioni locali / VPS / Docker self‑host: le istanze pubbliche già integrate (es. quella di default `https://streamvix.hayd.uk`) non richiedono configurazione manuale.
+* Se non la imposti, l'addon userà il fallback interno `https://streamvix.hayd.uk` e i flussi funzioneranno comunque, ma nelle installazioni dietro IP locale/pubby NAT potresti non ottenere il synthetic FHD.
+* La variabile viene usata per costruire l'endpoint interno `/vixsynthetic` (multi‑lingua + best video) — senza un BASE corretto non può generare quell'URL.
+* Non inserire il dominio di VixSrc stesso (verrà ignorato).
+
+Opzionale correlato:
+```
+VIX_DUAL=1
+```
+Abilita il pairing (Direct/Proxy + varianti Synthetic FHD) anche quando la pill “FHD” è disattivata in landing perché stai usando una configurazione legacy o script headless.
+
+Esempio blocco environment in `docker-compose.yml`:
+```yaml
+environment:
+    - ADDON_BASE_URL=https://streamvix.miodominio.xyz
+    - MFP_URL=https://mfp.miodominio.xyz
+    - MFP_PSW=supersecret
+    - VIX_DUAL=1        # opzionale
+    - TMDB_API_KEY=xxxxx
+```
+
+Se cambi `ADDON_BASE_URL` riavvia il container / processo per far sì che venga letto all'avvio.
+
+#### 🔍 Verifica Rapida (Badge "Addon Base URL")
+
+Nella pagina di installazione / configurazione dell'addon (landing) ora è mostrato un **badge** subito sopra il toggle VixSrc con il testo:
+
+`Addon Base URL: <valore>` (protocollo rimosso, es: `streamvix.miodominio.xyz`)
+
+Questo valore è quello che l'addon ha realmente risolto all'avvio. Usalo per verificare che la tua variabile d'ambiente sia attiva.
+
+| Cosa vedi nel badge | Significato | Azione |
+|---------------------|------------|--------|
+| Il tuo dominio/IP | OK, configurazione corretta | Nessuna |
+| `streamvix.hayd.uk` ma ti aspetti altro | Fallback attivo: `ADDON_BASE_URL` non letta | Controlla variabile + riavvio |
+
+Checklist quando resta il fallback:
+1. Variabile scritta correttamente (maiuscole esatte, niente slash finale).  
+2. Hai riavviato il container / processo dopo averla aggiunta o modificata.  
+3. Stai aprendo la landing usando esattamente l'host pubblico configurato (non un IP locale diverso).  
+4. Nessun carattere strano o spazio invisibile (ricopia a mano se dubbio).  
+5. Non hai usato il dominio di VixSrc (non valido come base).  
+6. Reverse proxy passa gli header Host / X-Forwarded-* corretti (se dubbi prova accesso diretto alla porta per confronto).  
+
+Se dopo il riavvio il badge continua a mostrare il fallback ma sei certo dei punti sopra, prova a:
+* Stampare le variabili con `docker compose exec <container> env | grep ADDON_BASE_URL`.
+* Verificare che non esistano doppi `ADDON_BASE_URL` in compose / override.
+
 ### ⚡ Eventi Dinamici: FAST vs Extractor
 
 Gli eventi sportivi dinamici vengono caricati dal file `config/dynamic_channels.json` generato periodicamente da `Live.py`.
