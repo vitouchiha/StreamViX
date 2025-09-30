@@ -278,7 +278,6 @@ button:active {
 .vix-pill.off { background:#333; color:#bbb; }
 .vix-pill.disabled { filter:grayscale(100%); opacity:.35; cursor:not-allowed; }
 .vix-pill input { display:none; }
-/* (Removed floating AddonBase toast styles – inline badge used) */
 `
 
 function landingTemplate(manifest: any) {
@@ -320,7 +319,7 @@ function landingTemplate(manifest: any) {
 					if (key === 'personalTmdbKey') return; // removed from UI
 					// Custom pretty toggle for known keys
 						const toggleMap: any = {
-						'disableVixsrc': { title: 'VixSrc 🍿', invert: true },
+						'disableVixsrc': { title: 'VixSrc 🍿 - 🔒 <span style="font-size:0.65rem; opacity:0.75; font-weight:600;">(Inserisci MFP per abilitare)</span>', invert: true },
 						'disableLiveTv': { title: 'Live TV 📺 <span style="font-size:0.65rem; opacity:0.75; font-weight:600;">(Molti canali hanno bisogno di MFP)</span>', invert: true },
 						'animeunityEnabled': { title: 'Anime Unity ⛩️ - 🔒 <span style="font-size:0.65rem; opacity:0.75; font-weight:600;">(Inserisci MFP per abilitare)</span>', invert: false },
 						'animesaturnEnabled': { title: 'Anime Saturn 🪐 - 🔓 🔒 <span style="font-size:0.65rem; opacity:0.75; font-weight:600;">(Alcuni flussi hanno bisogno di MFP)</span>', invert: false },
@@ -345,8 +344,22 @@ function landingTemplate(manifest: any) {
 						const checkedAttr = isChecked ? ' checked' : '';
 						const extraAttr = key==='mediaflowMaster' ? ' data-master-mfp="1"' : '';
 						const extraAttrTmdb = key==='personalTmdbKey' ? ' data-personal-tmdb="1"' : '';
-							// (Rimossa vecchia iniezione pills Local/FHD - verrà creato sotto-menu dedicato)
+							// Inject Local checkbox ONLY for VixSrc row (between title and main toggle)
 							let extraLocal = '';
+							if (key === 'disableVixsrc') {
+								// Restore Local & Dual pills (no addonBase field)
+								extraLocal = `
+								<span id="localPill" class="vix-pill off" title="Flusso diretto (senza MediaflowProxy)">
+									<label style="cursor:pointer;">
+										<input type="checkbox" id="vixLocal" name="vixLocal" data-config-key="vixLocal" />LOCAL
+									</label>
+								</span>
+								<span id="dualPill" class="vix-pill off" title="Mostra anche la variante 1080p forzata (FHD)">
+									<label style="cursor:pointer;">
+										<input type="checkbox" id="vixDual" name="vixDual" data-config-key="vixDual" />FHD
+									</label>
+								</span>`;
+							}
 							options += `
 							<div class="form-element"${extraAttr}${extraAttrTmdb}>
 								<div class="toggle-row" data-toggle-row="${key}">
@@ -394,7 +407,6 @@ function landingTemplate(manifest: any) {
 		if (options.length) {
 			formHTML = `
 			<form class="pure-form" id="mainForm">
-				<!-- (Addon Base input removed – resolved server-side; read-only badge appears if available) -->
 				<!-- Preset Installazioni consigliate -->
 				<div style="margin:0 0 1rem 0; padding:0.75rem; border:1px solid rgba(140,82,255,0.55); border-radius:10px; background:rgba(20,15,35,0.55);">
 					<div style="font-weight:700; margin-bottom:0.5rem; text-align:center; color:#c9b3ff;">Installazioni consigliate</div>
@@ -448,7 +460,7 @@ function landingTemplate(manifest: any) {
 							config[key] = el.value;
 						}
 					});
-					// (addonBase input removed – server resolved; nothing to store)
+					// (Reverted) no addonBase injection in legacy version
 					// tmdbApiKey always kept (UI hidden)
 					return config;
 				};
@@ -475,8 +487,6 @@ function landingTemplate(manifest: any) {
 						var input = row.querySelector('input[type="checkbox"][data-main-toggle="1"]');
 						if (input) input.addEventListener('change', function(){ setRowState(row); });
 					});
-
-				// (addonBase localStorage restore & listeners removed)
 
 				// --- Custom dynamic visibility logic ---
 				// Removed personal TMDB key UI
@@ -562,8 +572,25 @@ function landingTemplate(manifest: any) {
 							animeSaturnTitleSpan.innerHTML = originalSaturnTitle; // Reset
 						}
 					}
-					// VixSrc sempre disponibile indipendentemente da Mediaflow
-					if (vixsrcCb){ vixsrcCb.disabled = false; if (vixsrcRow){ vixsrcRow.classList.remove('dimmed'); setRowState(vixsrcRow); } }
+					if (vixsrcCb){
+						if (!on) { // Master OFF
+							if (storedVixsrcState === null) storedVixsrcState = vixsrcCb.checked;
+							vixsrcCb.checked = false;
+							vixsrcCb.disabled = true;
+							if (vixsrcRow) vixsrcRow.classList.add('dimmed');
+						} else { // Master ON
+							if (vixsrcRow) vixsrcRow.classList.remove('dimmed');
+							vixsrcCb.disabled = !canEnableChildren;
+							if (canEnableChildren) {
+								if (noPreset && !vixsrcCb.checked) { vixsrcCb.checked = true; }
+								else if (storedVixsrcState !== null) { vixsrcCb.checked = storedVixsrcState; storedVixsrcState = null; }
+							} else {
+								if (storedVixsrcState === null) storedVixsrcState = vixsrcCb.checked;
+								vixsrcCb.checked = false;
+							}
+						}
+						if (vixsrcRow) setRowState(vixsrcRow);
+					}
 					// Sync Local pill availability when VixSrc gating changes
 					try { if (typeof updateLocalAvailability === 'function') updateLocalAvailability(); } catch(e) {}
 
@@ -591,72 +618,54 @@ function landingTemplate(manifest: any) {
 				if (mfpMaster){ mfpMaster.addEventListener('change', function(){ syncMfp(); updateLink(); }); syncMfp(); }
 				if (mfpUrlInput) { mfpUrlInput.addEventListener('input', function(){ syncMfp(); updateLink(); }); }
 				if (mfpPwdInput) { mfpPwdInput.addEventListener('input', function(){ syncMfp(); updateLink(); }); }
-				// --- Nuovo sotto-menu VixSrc (Direct / FHD) ---
+				// Local checkbox (direct VixSrc) triggers link update
 				try {
-					var vixsrcMain = document.getElementById('disableVixsrc');
-					var vixsrcMainWrap = vixsrcMain ? vixsrcMain.closest('.form-element') : null;
-					if (vixsrcMainWrap){
-						var existingSub = document.getElementById('vixsrcSubMenu');
-						if (!existingSub){
-							var sub = document.createElement('div');
-							sub.id = 'vixsrcSubMenu';
-							sub.style.margin = '6px 0 12px 0';
-							sub.style.padding = '16px 18px';
-							sub.style.border = '1px dashed rgba(140,82,255,0.55)';
-							sub.style.borderRadius = '10px';
-							sub.style.background = 'rgba(20,15,35,0.55)';
-							sub.innerHTML = ''
-							+ '<div style="text-align:center; font-size:0.95rem; letter-spacing:0.05em; margin:0 0 10px 0; color:#c9b3ff; font-weight:700;">Modalità VixSrc</div>'
-							+ '<div id="vixsrcDefaultMsg" style="text-align:center; font-size:0.85rem; margin:0 0 14px 0; opacity:0.85; line-height:1.3;">Nessuna selezione = Default (Proxy se MFP presente, altrimenti Direct)</div>'
-							+ '<div style="display:flex; gap:16px; justify-content:center; align-items:center; flex-wrap:wrap;">'
-								+ '<label style="display:inline-flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer; font-weight:600; padding:6px 14px; background:#2a1d44; border:1px solid #4d2d66; border-radius:10px;">'
-									+ '<input type="checkbox" id="vixDirectToggle" data-config-key="vixLocal" style="transform:scale(1.2);" />'
-									+ '<span>Direct</span>'
-								+ '</label>'
-								+ '<label style="display:inline-flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer; font-weight:600; padding:6px 14px; background:#2a1d44; border:1px solid #4d2d66; border-radius:10px;">'
-									+ '<input type="checkbox" id="vixFhdToggle" data-config-key="vixDual" style="transform:scale(1.2);" />'
-									+ '<span>FHD</span>'
-								+ '</label>'
-								+ '<span id="vixLegendTrigger" style="cursor:pointer; font-size:0.75rem; padding:6px 10px; border:1px solid #8c52ff; border-radius:10px; background:#2d1b47; font-weight:700; letter-spacing:0.05em; display:inline-flex; align-items:center; gap:6px;">📖 <span style="font-size:0.75rem;">HELP</span></span>'
-							+ '</div>'
-							+ '<div id="vixLegendPanel" style="display:none; margin-top:12px; font-size:0.75rem; line-height:1.4; background:rgba(10,10,25,0.55); padding:10px 12px; border:1px solid #3d2d60; border-radius:10px;">'
-								+ '<b>Default</b>: Se MFP attivo usa proxy, senza MFP mostra i Direct.<br/>'
-								+ '<b>Direct</b>: Forza solo link senza MFP (alcuni player potrebbero non funzionare).<br/>'
-								+ '<b>FHD</b>: Forza flussi Vix nella qualita maggiore disponibile (proxy se MFP, fallback Direct senza MFP).<br/>'
-								+ 'Entrambi <b>ON</b> = Direct + FHD (mostra entrambe le varianti, se MFP assente solo direct).'
-							+ '</div>';
-							vixsrcMainWrap.parentNode.insertBefore(sub, vixsrcMainWrap.nextSibling);
+					var vixLocalCb = document.getElementById('vixLocal');
+					var localPill = document.getElementById('localPill');
+					var vixDualCb = document.getElementById('vixDual');
+					var dualPill = document.getElementById('dualPill');
+					function syncLocalPill(){
+						if (localPill && vixLocalCb){
+							if (vixLocalCb.checked){ localPill.classList.remove('off'); localPill.classList.add('on'); }
+							else { localPill.classList.remove('on'); localPill.classList.add('off'); }
 						}
-						var vixDirectToggle = document.getElementById('vixDirectToggle');
-						var vixFhdToggle = document.getElementById('vixFhdToggle');
-						var legendBtn = document.getElementById('vixLegendTrigger');
-						var legendPanel = document.getElementById('vixLegendPanel');
-						if (legendBtn && legendPanel){ legendBtn.addEventListener('click', function(){ legendPanel.style.display = legendPanel.style.display==='none' ? 'block':'none'; }); }
-						function updateVixModeVisual(){
-							var info = document.getElementById('vixsrcDefaultMsg');
-							if (!info) return;
-							var dOn = vixDirectToggle && vixDirectToggle.checked;
-							var fOn = vixFhdToggle && vixFhdToggle.checked;
-							var mode = 'Default';
-							if (dOn && !fOn) mode = 'Direct';
-							else if (!dOn && fOn) mode = 'FHD';
-							else if (dOn && fOn) mode = 'Direct + FHD';
-							info.textContent = 'Modalità: ' + mode + '  —  Nessuna selezione = Default (Proxy & Auto se MFP, altrimenti Direct)';
-						}
-						if (vixDirectToggle) vixDirectToggle.addEventListener('change', function(){ updateVixModeVisual(); updateLink(); });
-						if (vixFhdToggle) vixFhdToggle.addEventListener('change', function(){ updateVixModeVisual(); updateLink(); });
-						updateVixModeVisual();
-						if (vixsrcMain) {
-							vixsrcMain.addEventListener('change', function(){
-								var sub = document.getElementById('vixsrcSubMenu');
-								if (sub) sub.style.display = vixsrcMain.checked ? 'block':'none';
-								updateLink();
-							});
-							var subInit = document.getElementById('vixsrcSubMenu');
-							if (subInit) subInit.style.display = vixsrcMain.checked ? 'block':'none';
+						if (dualPill && vixDualCb){
+							if (vixDualCb.checked){ dualPill.classList.remove('off'); dualPill.classList.add('on'); }
+							else { dualPill.classList.remove('on'); dualPill.classList.add('off'); }
 						}
 					}
-				} catch(e) { console.warn('VixSrc submenu creation failed', e); }
+					function updateLocalAvailability(){
+						try {
+							var vixsrcToggle = document.getElementById('disableVixsrc');
+							var localPillEl = document.getElementById('localPill');
+							var localCb = document.getElementById('vixLocal');
+							var dualPillEl = document.getElementById('dualPill');
+							var dualCb = document.getElementById('vixDual');
+							if (!vixsrcToggle) return;
+							var providerOn = vixsrcToggle.checked && !vixsrcToggle.disabled; // checked => provider enabled (invert semantics handled elsewhere)
+							function handle(elCb, elPill){
+								if (!elCb || !elPill) return;
+								if (!providerOn){
+									elCb.checked = false;
+									elCb.disabled = true;
+									elPill.classList.add('disabled');
+								} else {
+									elCb.disabled = false;
+									elPill.classList.remove('disabled');
+								}
+							}
+							handle(localCb, localPillEl);
+							handle(dualCb, dualPillEl);
+							syncLocalPill();
+						} catch(e) { console.warn('updateLocalAvailability failed', e); }
+					}
+					if (vixLocalCb) vixLocalCb.addEventListener('change', function(){ syncLocalPill(); updateLink(); });
+					if (vixDualCb) vixDualCb.addEventListener('change', function(){ syncLocalPill(); updateLink(); });
+					syncLocalPill();
+					updateLocalAvailability();
+					var vixsrcToggleEl = document.getElementById('disableVixsrc');
+					if (vixsrcToggleEl) vixsrcToggleEl.addEventListener('change', function(){ updateLocalAvailability(); updateLink(); });
+				} catch(e) {}
 				// Ensure MediaflowProxy block remains right after presets block (already moved earlier) and before provider toggles
 				try {
 					var presetBlock = document.getElementById('presetInstallations');
@@ -752,17 +761,6 @@ function landingTemplate(manifest: any) {
 							if (vavooToggleEl2 && vavooToggleEl2.parentElement !== liveSub2) liveSub2.appendChild(vavooToggleEl2);
 						}
 					} catch(e) { console.warn('LiveTV block reposition after reorder failed', e); }
-					// Ensure VixSrc submenu follows VixSrc toggle after reorder
-					try {
-						var vixToggle = document.getElementById('disableVixsrc');
-						var subMenu = document.getElementById('vixsrcSubMenu');
-						if (vixToggle && subMenu){
-							var vixWrap = vixToggle.closest('.form-element');
-							if (vixWrap && vixWrap.parentNode && vixWrap.nextSibling !== subMenu){
-								vixWrap.parentNode.insertBefore(subMenu, vixWrap.nextSibling);
-							}
-						}
-					} catch(e){ console.warn('VixSrc submenu reposition fail', e); }
 				} catch(e) { console.warn('Reorder toggles failed', e); }
 				// Preset logic
 				function applyPreset(name){
@@ -897,7 +895,6 @@ function landingTemplate(manifest: any) {
 		} catch (e) { console.warn(e); }
 	`;
 
-	const resolvedAddonBaseEsc = (manifest.__resolvedAddonBase || '').replace(/`/g, '\\`').replace(/\$/g,'$$');
 	return `
 	<!DOCTYPE html>
 	<html style="background-image: url(${background});">
@@ -915,7 +912,6 @@ function landingTemplate(manifest: any) {
 	</head>
 
 	<body>
-		<!-- (Removed toast anchor – only inline badge remains) -->
 		<div id="addon">
 			<div class="logo">
 			<img src="${logo}">
@@ -1000,7 +996,6 @@ function landingTemplate(manifest: any) {
 		</div>
 		<script>
 			${script}
-			// (Floating AddonBase toast removed – inline badge only)
 			try {
 				if (typeof window.updateLink === 'function') {
 					window.updateLink();
@@ -1016,3 +1011,4 @@ function landingTemplate(manifest: any) {
 }
 
 export { landingTemplate };
+

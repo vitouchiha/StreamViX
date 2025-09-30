@@ -831,15 +831,19 @@ export async function getStreamContent(id: string, type: ContentType, config: Ex
   }
 
   if (!streams.length) {
-    console.warn('[VixSrc] Nessuno stream ottenuto');
-    return null;
+    // Non uscire subito: scenario logic (es. Dual senza Local) può ancora creare synthetic o fallback FHD
+    console.warn('[VixSrc] Nessuno stream iniziale (direct non mostrato e proxy assente) -> procedo con scenario matrix per fallback');
+    // Prima opportunità: se siamo già in condizione Dual senza Local e abbiamo directResult parsed, prepariamo un placeholder
+    if (!config.vixLocal && config.vixDual && directResult) {
+      console.log('[VixSrc][PreScenario3] DirectResult disponibile: idoneo per fallback FHD se synthetic fallirà');
+    }
   }
 
   // Ordina per: direct (se mostrato) prima del proxy
   streams.sort((a,b)=> a.source === b.source ? 0 : (a.source === 'direct' ? -1 : 1));
   // Nuova matrice assemblaggio finale secondo combinazioni Local/Dual
   try {
-    if (!streams.length) return null;
+    // NON uscire se zero: Scenario 3 può creare synthetic o fallback usando directResult
     const usableAddonBase = (config.addonBase && !config.addonBase.includes(domains.vixsrc)) ? config.addonBase : '';
     const haveMfp = !!(config.mfpUrl && config.mfpPsw && streams.some(s=>s.source==='proxy'));
     const haveDirect = streams.some(s=>s.source==='direct');
@@ -968,7 +972,7 @@ export async function getStreamContent(id: string, type: ContentType, config: Ex
       console.log('[VixSrc][Scenario3] Attivo: solo synthetic + wrapper');
       const result: VixCloudStreamInfo[] = [];
       let masterForSynthetic: string | null = null;
-      // Prova direct (anche se non mostrato), se non c'è usa proxy d=
+      // Prova direct (anche se non mostrato), se non c'è usa proxy d= oppure directResult (parse effettuata ma non esposta)
       if (directStream && /\/playlist\//.test(directStream.streamUrl)) masterForSynthetic = directStream.streamUrl;
       if (!masterForSynthetic && proxyStream) {
         try {
@@ -976,6 +980,9 @@ export async function getStreamContent(id: string, type: ContentType, config: Ex
           const dParam = u.searchParams.get('d');
           if (dParam && /\/playlist\//.test(dParam)) masterForSynthetic = dParam;
         } catch {/* ignore */}
+      }
+      if (!masterForSynthetic && !directStream && directResult && /\/playlist\//.test(directResult.streamUrl)) {
+        masterForSynthetic = directResult.streamUrl; // consente creazione synthetic anche senza Local
       }
       if (masterForSynthetic) {
         const synDirect = buildSyntheticBase(masterForSynthetic, directStream ? directStream.referer : (proxyStream? proxyStream.referer : ''));
@@ -986,6 +993,30 @@ export async function getStreamContent(id: string, type: ContentType, config: Ex
         }
       } else {
         console.log('[VixSrc][Synthetic] Nessun master disponibile per creare synthetic (Scenario 3)');
+      }
+      // Fallback richiesto: se FHD (Dual) senza Local e senza MFP non produce nulla (manca addonBase/synthetic),
+      // allora restituiamo comunque un link direct FHD (se parsed) anche se Local è OFF.
+      if (!result.length) {
+        // directStream è null quando vixLocal=false perché non viene aggiunto a streams.
+        // Tuttavia abbiamo comunque parsed 'directResult' sopra (anche se non mostrato).
+        const rawDirect = directStream || directResult; // preferisci eventuale directStream (in teoria null qui) ma fallback a directResult
+        if (rawDirect) {
+          const fallback: VixCloudStreamInfo = { ...rawDirect };
+          fallback.name = fallback.name
+            .replace(/\s*🔓FHD?$/,'')
+            .replace(/\s*🔓$/,'') + ' 🔓FHD';
+          try {
+            if (/\/playlist\//.test(fallback.streamUrl) && !/[?&]h=1(?!\d)/.test(fallback.streamUrl)) {
+              const u = new URL(fallback.streamUrl);
+              u.searchParams.set('h','1');
+              fallback.streamUrl = u.toString();
+            }
+          } catch {/* ignore */}
+          result.push(fallback);
+          console.log('[VixSrc][Scenario3][Fallback] Nessun synthetic/MFP: restituito direct FHD singolo (usando', directStream ? 'directStream' : 'directResult', ')');
+        } else {
+          console.log('[VixSrc][Scenario3][Fallback] Nessuno stream direct disponibile (directStream/directResult null)');
+        }
       }
       return result;
     }
