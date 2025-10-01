@@ -339,8 +339,7 @@ def event_is_relax(name: str) -> bool:
 # ---------------------------------------------------------------------------
 # Static channels update (pdUrlF)
 # ---------------------------------------------------------------------------
-# Esteso per includere "Sky Uno" (playlist: Sky UNO Italy) e mantenere case-insensitive
-ITALIAN_CHANNEL_NAME_RE = re.compile(r"\b(Rai ?[0-9A-Z]?|Rai ?[A-Z][a-z]+|Sky ?Sport ?[0-9A-Za-z]*|Sky ?Cinema ?[A-Za-z]*|Sky ?Uno|Canale 5|Italia 1|Rete 4|Mediaset|Eurosport ?[12]?|DAZN ?[0-9]?|Dazn ?[0-9]?|Cine34|Top ?Crime|Motor Trend)\b", re.IGNORECASE)
+ITALIAN_CHANNEL_NAME_RE = re.compile(r"\b(Rai ?[0-9A-Z]?|Rai ?[A-Z][a-z]+|Sky ?Sport ?[0-9A-Za-z]*|Sky ?Cinema ?[A-Za-z]*|Canale 5|Italia 1|Rete 4|Mediaset|Eurosport ?[12]?|DAZN ?[0-9]?|Dazn ?[0-9]?|Cine34|Top ?Crime|Motor Trend)\b", re.IGNORECASE)
 
 # Whitelist mapping per nomi playlist speciali che devono corrispondere a canali statici esistenti.
 # In particolare: "Sky Calcio 1 (251)" .. "Sky Calcio 1 (257)" -> "Sky Sport 251" .. "Sky Sport 257".
@@ -375,32 +374,13 @@ def update_static_channels(entries: List[Dict[str, Any]], tv_channels_path: Path
     attempted = 0
     italy_playlist_count = 0
     not_found_samples = []  # keep up to 15 samples of keys not found for diagnostics
-    # Rileva se esiste almeno una variante di group-title contenente 'ITALY' (case-insensitive, anche con prefissi tipo '24/7| ITALY')
-    def _contains_italy(raw):
-        return bool(raw and 'ITALY' in raw.upper())
-    raw_group_titles = [e['attrs'].get('group-title') for e in entries]
-    has_italy_group = any(_contains_italy(gt) for gt in raw_group_titles)
-    non_standard_italy_variants = sorted({gt for gt in raw_group_titles if _contains_italy(gt) and gt != 'ITALY'})
-    if non_standard_italy_variants:
-        print(f"[PD][STATIC] Varianti group-title ITALY rilevate: {', '.join(non_standard_italy_variants)}")
-        # Tokenizzazione diagnostica dei group-title non standard per aiutare future normalizzazioni.
-        # Esempio: "24/7| ITALY" -> ["24/7", "ITALY"], "LIVE | Italy" -> ["LIVE", "Italy"]
-        token_map = {}
-        for gt in non_standard_italy_variants:
-            if not gt:
-                continue
-            tokens = [t.strip() for t in re.split(r"[|:/,>-]+", gt) if t and t.strip()]
-            if tokens:
-                token_map[gt] = tokens
-        if token_map:
-            formatted = "; ".join(f"{orig} -> [{', '.join(tok for tok in toks)}]" for orig, toks in token_map.items())
-            print(f"[PD][STATIC][GT] Tokenizzazione varianti: {formatted}")
+    # Detect if playlist actually exposes ITALY group (some variants may omit or use different casing)
+    has_italy_group = any(e['attrs'].get('group-title') == 'ITALY' for e in entries)
     for e in entries:
         attrs = e['attrs']
-        gtitle = attrs.get('group-title') or ''
+        gtitle = attrs.get('group-title')
         if has_italy_group:
-            # Accetta qualsiasi group-title che contenga ITALY (ignore case) es. '24/7| ITALY'
-            if 'ITALY' not in gtitle.upper():
+            if gtitle != 'ITALY':
                 continue
         else:
             # Fallback heuristic: match by name tokens if group missing or different
@@ -422,11 +402,6 @@ def update_static_channels(entries: List[Dict[str, Any]], tv_channels_path: Path
                 # Log minimal debug once per match key (avoid flooding) -> print only in dry_run to surface mapping quickly
                 if dry_run:
                     print(f"[PD][MAP] Playlist '{disp}' mappato -> '{base_name}'")
-        # Normalizzazione variante estesa Sky Sport Max (Sky Sport Football Italy) -> Sky Sport Max
-        if re.match(r"(?i)^Sky\s+Sport\s+Max\s*\(Sky\s+Sport\s+Football.*\)$", base_name):
-            if dry_run:
-                print(f"[PD][MAP] Playlist '{disp}' mappato (football variant) -> 'Sky Sport Max'")
-            base_name = "Sky Sport Max"
         # Rimuove eventuale doppia occorrenza country
         base_name = re.sub(r"\s+Italy$", "", base_name, flags=re.IGNORECASE)
         # Riduci spazi

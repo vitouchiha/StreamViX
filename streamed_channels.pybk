@@ -31,22 +31,13 @@ Ordering override (custom request):
         1. Eventuali stream [P🐽D] di testa
         2. La prima sequenza contigua di stream con bandiera italiana ("🇮🇹")
     In questo modo restano prima le sorgenti prioritarie / italiane e gli [Strd] seguono immediatamente.
-Priorità intra-[Strd]: all'interno del blocco [Strd] gli stream con bandiera italiana ("🇮🇹") vengono riordinati in testa
-    mantenendo però la posizione globale del blocco rispetto agli altri gruppi (PD / IT / RB77 / resto).
-Header propagation: attivata sempre se la playlist fornisce #EXTVLCOPT.
-Core header injection: se mancano aggiungiamo Origin / Referer / User-Agent.
-Strategia semplificata (nessuna variabile di modalità): per ogni stream iniettiamo sempre:
-    1. Query param h_<HeaderName>=<value> (compatibilità parser semplici / player generici / ExoPlayer tramite parsing)
-    2. Campo xHeaders nel JSON (player custom, libVLC, ffmpeg, ExoPlayer wrapper).
-In questo modo non serve configurare nulla lato addon.
-Compatibilità player: l'aggiunta dei parametri query è innocua per player HTTP generici (ExoPlayer, libVLC, ffmpeg) che ignorano
-    parametri sconosciuti; i server non li usano per gating, ma se un wrapper lato addon ricostruisce gli header li otterrà da URL.
+Header propagation: attivata di default sempre (non serve più STREAMED_PROPAGATE_HEADERS=1) se la playlist fornisce #EXTVLCOPT.
 """
 from __future__ import annotations
 import os, re, json, time, hashlib, pathlib, sys, datetime, urllib.request, socket
 from typing import List, Dict, Any, Tuple
 
-PLAYLIST_URL = os.environ.get('STREAMED_PLAYLIST_URL','https://world-proxifier.xyz/streamed/playlist.m3u8?option=all')
+PLAYLIST_URL = os.environ.get('STREAMED_PLAYLIST_URL','https://world-proxifier.xyz/streamed/playlist.m3u8')
 CACHE_TTL = int(os.environ.get('STREAMED_CACHE_TTL_SEC','60'))
 _legacy_before = os.environ.get('STREAMED_PRE_START_WINDOW_MIN')
 _legacy_after = os.environ.get('STREAMED_POST_START_FETCH_WINDOW_MIN')
@@ -55,10 +46,10 @@ DISCOVERY_AFTER_MIN  = int(os.environ.get('STREAMED_DISCOVERY_AFTER_MIN',  _lega
 PERSIST_FILE = '/tmp/streamed_streams_persist.json'
 D_MIN_KEY_HITS = int(os.environ.get('STREAMED_MIN_KEYWORD_HITS', '2'))
 # Header propagation now always on (legacy env kept for backward compat if someone wants to disable explicitly with 0)
-HEADER_PARAM_PREFIX = 'h_'
-D_PROPAGATE = True
-FORCE_CORE_HEADERS = True
-ADD_LEGACY_H_PREFIX = False
+_legacy_flag = (os.environ.get('STREAMED_PROPAGATE_HEADERS') or '1').lower() in {'1','true','yes','on'}
+D_PROPAGATE = True if _legacy_flag else False
+HEADER_MODE = (os.environ.get('STREAMED_HEADER_MODE') or 'url_params').lower()
+HEADER_PARAM_PREFIX = os.environ.get('STREAMED_HEADER_PARAM_PREFIX','h_')
 DYNAMIC_FILE = os.environ.get('DYNAMIC_FILE') or '/tmp/dynamic_channels.json'
 CACHE_FILE = '/tmp/streamed_playlist_cache.json'
 
@@ -423,30 +414,6 @@ def enrich():
     persist = _load_persist()
     persist_changed = False
 
-    # Helper: reorder ALL [Strd] streams globally so that:
-    #   1) All [Strd] remain after their original earliest position (don't move block earlier than first [Strd])
-    #   2) Within [Strd] block: 🇮🇹 flagged first (relative order preserved inside each subgroup)
-    def _reorder_all_strd(streams_list: List[Dict[str,Any]]):
-        def _is_strd(obj: Any) -> bool:
-            if not isinstance(obj, dict):
-                return False
-            t = str(obj.get('title',''))
-            return t.startswith(HDR_STREAMED_PREFIX) or t.startswith(LEGACY_PREFIX)
-        indices = [i for i,s in enumerate(streams_list) if _is_strd(s)]
-        if not indices:
-            return
-        first = indices[0]
-        # Extract strd entries keeping original order
-        strd_entries = [streams_list[i] for i in indices]
-        # Remove them from list (reverse order to keep indices valid)
-        for i in reversed(indices):
-            del streams_list[i]
-        ita = [s for s in strd_entries if '🇮🇹' in str(s.get('title',''))]
-        other = [s for s in strd_entries if '🇮🇹' not in str(s.get('title',''))]
-        reordered = ita + other
-        for offset, s in enumerate(reordered):
-            streams_list.insert(first + offset, s)
-
     for ev in data:
         try:
             ev_start_iso = ev.get('eventStart')
@@ -517,13 +484,7 @@ def enrich():
                         sym = ''
                         if dt:
                             sym = STATUS_AHEAD if now < dt - datetime.timedelta(minutes=10) else STATUS_LIVE
-                        # Lingua italiana? Aggiungi bandiera subito dopo prefisso
-                        def _has_it_lang(s: str) -> bool:
-                            toks = [t.upper() for t in re.split(r'[^A-Za-z0-9]+', s) if t]
-                            IT_TOK = {'IT','ITA','ITALY','ITALIAN','ITALIANO'}
-                            return any(t in IT_TOK for t in toks)
-                        flag_seg = '🇮🇹 ' if _has_it_lang(variant) else ''
-                        new_title = f"{HDR_STREAMED_PREFIX} {flag_seg}{SOCCER_EMOJI} {sym} {variant}".strip()
+                        new_title = f"{HDR_STREAMED_PREFIX} {SOCCER_EMOJI} {sym} {variant}".strip()
                         ps['title'] = new_title
                         streams_list.insert(insert_idx, ps)
                         insert_idx += 1  # preserve persisted order
@@ -531,10 +492,9 @@ def enrich():
                         existing_titles.add(new_title)
                         restored += 1
                     if restored:
-                        _reorder_all_strd(streams_list)
                         ev['streams'] = streams_list
                         changed = True
-                        print(f"[STREAMED][RESTORE] event={ev.get('id')} restored={restored} reordered_strd_global")
+                        print(f"[STREAMED][RESTORE] event={ev.get('id')} restored={restored}")
                 # Nessuna discovery fuori finestra
                 continue
             added_this_event = 0
@@ -553,38 +513,18 @@ def enrich():
                 if not good:
                     continue
                 final_url = url
-                enriched_headers = {}
-                if 'headers' in entry:
-                    enriched_headers.update(entry['headers'])
-                # Core headers injection (Origin/Referer/User-Agent) if forced and missing
-                if FORCE_CORE_HEADERS:
-                    # Source of truth: env variables used in _build_request
-                    core_ua = os.environ.get('STREAMED_UA', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36')
-                    core_ref = os.environ.get('STREAMED_REFERER', 'https://embedsports.top/')
-                    core_ori = os.environ.get('STREAMED_ORIGIN', 'https://embedsports.top')
-                    if 'User-Agent' not in enriched_headers:
-                        enriched_headers['User-Agent'] = core_ua
-                    if 'Referer' not in enriched_headers and 'Referrer' not in enriched_headers:
-                        enriched_headers['Referer'] = core_ref
-                    if 'Origin' not in enriched_headers:
-                        enriched_headers['Origin'] = core_ori
-                # Propagation path A: URL params (default)
-                if D_PROPAGATE and enriched_headers:
+                if D_PROPAGATE and 'headers' in entry and HEADER_MODE == 'url_params':
                     try:
                         from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
                         parsed = urlparse(url)
                         q = dict(parse_qsl(parsed.query))
-                        for hk, hv in enriched_headers.items():
+                        for hk, hv in entry['headers'].items():
                             q[f"{HEADER_PARAM_PREFIX}{hk}"] = hv
-                            # legacy duplication disabilitata
                         nq = urlencode(q, doseq=True)
                         final_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, nq, parsed.fragment))
                     except Exception as e:
                         if match_debug:
                             print(f"[STREAMED][HDR][ERR] {e}")
-                # Else if not url_params but headers exist store for addon consumption
-                if enriched_headers:
-                    entry['headers'] = enriched_headers
                 # If legacy prefix already present from previous run keep consistent new prefix
                 display_title = title
                 # Remove old legacy prefix if present before re-adding new
@@ -599,13 +539,7 @@ def enrich():
                         sym = STATUS_LIVE
                 variant_tags = re.findall(r'\[[^\]]+\]', display_title)
                 variant = variant_tags[-1] if variant_tags else display_title
-                # Lingua italiana? Aggiungi bandiera subito dopo prefisso
-                def _has_it_lang(s: str) -> bool:
-                    toks = [t.upper() for t in re.split(r'[^A-Za-z0-9]+', s) if t]
-                    IT_TOK = {'IT','ITA','ITALY','ITALIAN','ITALIANO'}
-                    return any(t in IT_TOK for t in toks)
-                flag_seg = '🇮🇹 ' if _has_it_lang(variant) else ''
-                new_title = f"{HDR_STREAMED_PREFIX} {flag_seg}{SOCCER_EMOJI} {sym} {variant}".strip()
+                new_title = f"{HDR_STREAMED_PREFIX} {SOCCER_EMOJI} {sym} {variant}".strip()
                 if final_url in existing_urls or new_title in existing_titles:
                     continue
                 # Build stream object (header propagation forced now if headers exist)
@@ -643,7 +577,6 @@ def enrich():
                 existing_titles.add(new_title)
                 added_this_event += 1
             if added_this_event:
-                _reorder_all_strd(streams)
                 ev['streams'] = streams
                 added_total += added_this_event
                 changed = True
