@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.6.5](https://github.com/qwertyuiop8899/streamvix/compare/v1.6.4...v1.6.5) (2025-09-30)
+
+
+### Bug Fixes
+
+* add binge ([1cdec43](https://github.com/qwertyuiop8899/streamvix/commit/1cdec43e6e28442ca1bb9b67ded407f7f642cecd))
+
+## [1.6.4](https://github.com/qwertyuiop8899/streamvix/compare/v1.6.3...v1.6.4) (2025-09-30)
+
+
+### Bug Fixes
+
+* change logic landing ([b01123d](https://github.com/qwertyuiop8899/streamvix/commit/b01123d9120cbbeb90daaf1f6ea462f80fa9e0e7))
+* choice ([685acf0](https://github.com/qwertyuiop8899/streamvix/commit/685acf0da4f69f40888d5da9b0061b234efb8746))
+* hide tv with nomfp ([bded940](https://github.com/qwertyuiop8899/streamvix/commit/bded9407efc15f7252f623b7c55db1f000398a60))
+
+## [1.6.3](https://github.com/qwertyuiop8899/streamvix/compare/v1.6.2...v1.6.3) (2025-09-30)
+
+
+### Bug Fixes
+
+* enhance no mfp ([7f3eeda](https://github.com/qwertyuiop8899/streamvix/commit/7f3eeda757e9726dc0eafa5dfd26dfe0158396ae))
+
+## [1.6.2](https://github.com/qwertyuiop8899/streamvix/compare/v1.6.1...v1.6.2) (2025-09-30)
+
+
+### Bug Fixes
+
+* bump version ([8811b37](https://github.com/qwertyuiop8899/streamvix/commit/8811b3754061e11c0b491e9de2951e645b6e99c1))
+* refactor ([ff38a2d](https://github.com/qwertyuiop8899/streamvix/commit/ff38a2d2a16e34ad27ba0b38d0ce582fd5d2b740))
+
 ## [1.6.1](https://github.com/qwertyuiop8899/streamvix/compare/v1.6.0...v1.6.1) (2025-09-29)
 
 
