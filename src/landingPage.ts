@@ -322,7 +322,7 @@ function landingTemplate(manifest: any) {
 						const toggleMap: any = {
 						'disableVixsrc': { title: 'VixSrc 🍿', invert: true },
 						'disableLiveTv': { title: 'Live TV 📺 <span style="font-size:0.65rem; opacity:0.75; font-weight:600;">(Molti canali hanno bisogno di MFP)</span>', invert: true },
-						'animeunityEnabled': { title: 'Anime Unity ⛩️ - 🔒 <span style="font-size:0.65rem; opacity:0.75; font-weight:600;">(Inserisci MFP per abilitare)</span>', invert: false },
+						'animeunityEnabled': { title: 'Anime Unity ⛩️ - 🔓 🔒 <span style="font-size:0.65rem; opacity:0.75; font-weight:600;">(Alcuni flussi hanno bisogno di MFP)</span>', invert: false },
 						'animesaturnEnabled': { title: 'Anime Saturn 🪐 - 🔓 🔒 <span style="font-size:0.65rem; opacity:0.75; font-weight:600;">(Alcuni flussi hanno bisogno di MFP)</span>', invert: false },
 						'animeworldEnabled': { title: 'Anime World 🌍 - 🔓', invert: false },
 						'guardaserieEnabled': { title: 'GuardaSerie 🎥 - 🔓', invert: false },
@@ -395,19 +395,19 @@ function landingTemplate(manifest: any) {
 			formHTML = `
 			<form class="pure-form" id="mainForm">
 				<!-- (Addon Base input removed – resolved server-side; read-only badge appears if available) -->
-				<!-- Preset Installazioni consigliate -->
+				<!-- Preset Installazioni consigliate - RIMOSSO -->
+				<!--
 				<div style="margin:0 0 1rem 0; padding:0.75rem; border:1px solid rgba(140,82,255,0.55); border-radius:10px; background:rgba(20,15,35,0.55);">
 					<div style="font-weight:700; margin-bottom:0.5rem; text-align:center; color:#c9b3ff;">Installazioni consigliate</div>
 					<div id="presetInstallations" style="display:grid; grid-template-columns:repeat(2, minmax(120px,1fr)); gap:0.5rem; justify-items:stretch; align-items:stretch;">
-						<!-- Colonna sinistra -->
 						<button type="button" data-preset="pubblicamfp" class="preset-btn" style="min-width:120px;">Pubblica (MFP)</button>
 						<button type="button" data-preset="locale" class="preset-btn" style="min-width:120px;">Locale</button>
-						<!-- Colonna sinistra seconda riga (NO MFP) e destra seconda riga (OCI) -->
 						<button type="button" data-preset="pubblicanomfp" class="preset-btn" style="min-width:140px;">Pubblica (NO MFP)</button>
 						<button type="button" data-preset="oci" class="preset-btn" style="min-width:140px;">OCI/Render</button>
 					</div>
 					<p style="margin:0.6rem 0 0 0; font-size:0.7rem; opacity:0.75; text-align:center;">I preset impostano automaticamente i provider consigliati.</p>
 				</div>
+				-->
 				<!-- Manual placement containers for MediaflowProxy and Local (Eurostreaming) -->
 				<div id="mediaflowManualSlot"></div>
 
@@ -494,6 +494,62 @@ function landingTemplate(manifest: any) {
 					var mfpUrlEl = mfpUrlInput ? mfpUrlInput.closest('.form-element') : null;
 					var mfpPwdEl = mfpPwdInput ? mfpPwdInput.closest('.form-element') : null;
 				var animeUnityEl = document.getElementById('animeunityEnabled');
+				// --- AnimeUnity Submenu (AUTO / FHD) ---
+				try {
+					var auMain = document.getElementById('animeunityEnabled');
+					var auWrap = auMain ? auMain.closest('.form-element') : null;
+					if (auWrap) {
+						var existingAu = document.getElementById('animeunitySubMenu');
+						if (!existingAu) {
+							var auSub = document.createElement('div');
+							auSub.id = 'animeunitySubMenu';
+							auSub.style.margin = '6px 0 12px 0';
+							auSub.style.padding = '16px 18px';
+							auSub.style.border = '1px dashed rgba(140,82,255,0.55)';
+							auSub.style.borderRadius = '10px';
+							auSub.style.background = 'rgba(20,15,35,0.55)';
+							auSub.innerHTML = ''
+							+ '<div style="text-align:center; font-size:0.95rem; letter-spacing:0.05em; margin:0 0 10px 0; color:#c9b3ff; font-weight:700;">Modalità AnimeUnity</div>'
+							+ '<div id="animeunityDefaultMsg" style="text-align:center; font-size:0.80rem; margin:0 0 14px 0; opacity:0.85; line-height:1.3;">Nessuna selezione = SOLO AUTO</div>'
+							+ '<div style="display:flex; gap:12px; justify-content:center; align-items:center; flex-wrap:wrap;">'
+								+ '<label style="display:inline-flex; align-items:center; gap:6px; font-size:0.75rem; cursor:pointer; font-weight:600; padding:5px 10px; background:#2a1d44; border:1px solid #4d2d66; border-radius:10px;">'
+									+ '<input type="checkbox" id="animeunityAutoToggle" data-config-key="animeunityAuto" style="transform:scale(1.1);" />'
+									+ '<span>AUTO</span>'
+								+ '</label>'
+								+ '<label style="display:inline-flex; align-items:center; gap:6px; font-size:0.75rem; cursor:pointer; font-weight:600; padding:5px 10px; background:#2a1d44; border:1px solid #4d2d66; border-radius:10px;">'
+									+ '<input type="checkbox" id="animeunityFhdToggle" data-config-key="animeunityFhd" style="transform:scale(1.1);" />'
+									+ '<span>FHD</span>'
+								+ '</label>'
+							+ '</div>';
+							auWrap.parentNode.insertBefore(auSub, auWrap.nextSibling);
+							var auAuto = document.getElementById('animeunityAutoToggle');
+							var auFhd = document.getElementById('animeunityFhdToggle');
+							function updateAuVisual(){
+								var info = document.getElementById('animeunityDefaultMsg');
+								if (!info) return;
+								var active = [];
+								if (auAuto && auAuto.checked) active.push('AUTO');
+								if (auFhd && auFhd.checked) active.push('FHD');
+								if (active.length === 0) info.textContent = 'Nessuna selezione = SOLO AUTO'; else info.textContent = 'Modalità: ' + active.join(', ');
+							}
+							[auAuto, auFhd].forEach(function(el){ if (el) el.addEventListener('change', function(){ updateAuVisual(); if (typeof window.updateLink==='function') window.updateLink(); }); });
+							updateAuVisual();
+						}
+					}
+					// Logica per mostrare/nascondere il sottomenù AnimeUnity
+					var auMainToggle = document.getElementById('animeunityEnabled');
+					var auSubMenuEl = document.getElementById('animeunitySubMenu');
+					function syncAuSubMenu() {
+						if (auMainToggle && auSubMenuEl) {
+							auSubMenuEl.style.display = auMainToggle.checked ? 'block' : 'none';
+						}
+					}
+					if (auMainToggle) {
+						auMainToggle.addEventListener('change', syncAuSubMenu);
+						// Imposta stato iniziale
+						syncAuSubMenu();
+					}
+				} catch(e) { console.warn('AnimeUnity submenu creation failed', e); }
 				var animeSaturnEl = document.getElementById('animesaturnEnabled');
 				var animeSaturnRow = animeSaturnEl ? animeSaturnEl.closest('[data-toggle-row]') : null;
 				var animeSaturnTitleSpan = animeSaturnRow ? animeSaturnRow.querySelector('.toggle-title') : null;
@@ -515,46 +571,12 @@ function landingTemplate(manifest: any) {
 					if (mfpUrlEl) mfpUrlEl.style.display = on ? 'block':'none';
 					if (mfpPwdEl) mfpPwdEl.style.display = on ? 'block':'none';
 					if (animeUnityEl){
-						// Regole aggiornate:
-						// Allowed presets (può essere attivato se MFP + credenziali): locale, pubblicamfp, oci, nessun preset
-						// Forbidden: pubblicanomfp (sempre OFF e dimmed)
-						var isForbiddenPreset = currentPreset === 'pubblicanomfp';
-						var isAllowedPreset = (!currentPreset) || currentPreset === 'locale' || currentPreset === 'pubblicamfp' || currentPreset === 'oci';
-						if (isForbiddenPreset) {
-							// Forzato OFF e dimmed
-							animeUnityEl.checked = false;
-							animeUnityEl.disabled = true;
-							if (animeUnityRow) animeUnityRow.classList.add('dimmed');
-						} else if (isAllowedPreset) {
-							// Gestione gating MFP
-							if (!on) {
-								animeUnityEl.checked = false;
-								animeUnityEl.disabled = true;
-								if (animeUnityRow) animeUnityRow.classList.add('dimmed');
-							} else {
-								// MFP ON
-								if (animeUnityRow) animeUnityRow.classList.remove('dimmed');
-								// Abilitabile solo se credenziali complete
-								animeUnityEl.disabled = !canEnableChildren;
-								// Autocheck solo per locale o nessun preset; pubblicamfp e oci restano OFF di default
-								if (canEnableChildren) {
-									if ((currentPreset === 'locale' || noPreset) && !animeUnityEl.checked) {
-										animeUnityEl.checked = true;
-									} else if ((currentPreset === 'pubblicamfp' || currentPreset === 'oci') && animeUnityEl.checked && !animeUnityEl.wasUserClicked) {
-										// Se per qualche motivo era rimasto checked da preset diverso, spegni (solo la prima volta)
-										animeUnityEl.checked = false;
-									}
-								} else {
-									animeUnityEl.checked = false;
-								}
-							}
-						} else {
-							// Qualsiasi altro preset non previsto: fallback a OFF dimmed
-							animeUnityEl.checked = false;
-							animeUnityEl.disabled = true;
-							if (animeUnityRow) animeUnityRow.classList.add('dimmed');
+						// AnimeUnity ora sempre disponibile come AnimeWorld (nessun gating MFP)
+						if (animeUnityRow) {
+							animeUnityRow.classList.remove('dimmed');
+							animeUnityEl.disabled = false;
+							setRowState(animeUnityRow);
 						}
-						if (animeUnityRow) setRowState(animeUnityRow);
 					}
 					if (animeSaturnEl){
 						// Keep usable but add note when off
@@ -733,9 +755,9 @@ function landingTemplate(manifest: any) {
 						'streamingwatchEnabled', // StreamingWatch
 						'guardaserieEnabled',    // GuardaSerie
 						'eurostreamingEnabled',  // Eurostreaming
-						'animeunityEnabled',     // Anime Unity
 						'animesaturnEnabled',    // Anime Saturn
-						'animeworldEnabled'      // Anime World
+						'animeworldEnabled',     // Anime World
+						'animeunityEnabled'      // Anime Unity (moved LAST per richiesta)
 					];
 					var firstWrapper = null;
 					var prev = null;
@@ -777,79 +799,22 @@ function landingTemplate(manifest: any) {
 							}
 						}
 					} catch(e){ console.warn('VixSrc submenu reposition fail', e); }
+					// Ensure AnimeUnity submenu follows AnimeUnity toggle after reorder (now last)
+					try {
+						var auToggle = document.getElementById('animeunityEnabled');
+						var auSubMenu = document.getElementById('animeunitySubMenu');
+						if (auToggle && auSubMenu) {
+							var auWrap = auToggle.closest('.form-element');
+							if (auWrap && auWrap.parentNode && auWrap.nextSibling !== auSubMenu) {
+								auWrap.parentNode.insertBefore(auSubMenu, auWrap.nextSibling);
+							}
+						}
+					} catch(e){ console.warn('AnimeUnity submenu reposition fail', e); }
 				} catch(e) { console.warn('Reorder toggles failed', e); }
-				// Preset logic
-				function applyPreset(name){
-					// Base: tutto ON (compresi invertiti) => features abilitate
-					var base = {
-						disableVixsrc: true,
-						disableLiveTv: true,
-						cb01Enabled: true,
-						guardahdEnabled: true,
-						guardaserieEnabled: true,
-						eurostreamingEnabled: true,
-						streamingwatchEnabled: true,
-						animeunityEnabled: true,
-						animesaturnEnabled: true,
-						animeworldEnabled: true,
-						tvtapProxyEnabled: true,
-						vavooNoMfpEnabled: true,
-						mediaflowMaster: false
-					};
-					var p = name;
-					try { window.__SVX_PRESET = p; } catch(e){}
-					if (p==='locale') {
-						base.tvtapProxyEnabled = false; // OFF
-						base.vavooNoMfpEnabled = false; // OFF
-						base.mediaflowMaster = true;    // ON per preset Locale
-					} else if (p==='pubblicamfp') {
-						base.tvtapProxyEnabled = false;
-						base.vavooNoMfpEnabled = false;
-						base.eurostreamingEnabled = false;
-						base.animeunityEnabled = false;
-						base.mediaflowMaster = true;
-					} else if (p==='pubblicanomfp') {
-						base.disableVixsrc = false; // VixSrc OFF
-						base.cb01Enabled = false;
-						base.eurostreamingEnabled = false;
-						base.animeunityEnabled = false;
-					} else if (p==='oci') {
-						base.eurostreamingEnabled = false;
-						base.animeunityEnabled = false; // resta OFF
-						base.mediaflowMaster = true;    // abilita MFP
-					}
-					Object.keys(base).forEach(function(k){
-						var el = document.getElementById(k);
-						if (!el) return;
-						try { el.checked = !!base[k]; } catch(e){}
-						try {
-							var evt;
-							try { evt = new Event('change', { bubbles:true }); } catch(e2) { evt = document.createEvent('Event'); evt.initEvent('change', true, false); }
-							el.dispatchEvent(evt);
-						} catch(e3){}
-					});
-					// Active style on clicked button
-					var presetWrap = document.getElementById('presetInstallations');
-					if (presetWrap){
-						presetWrap.querySelectorAll('.preset-btn').forEach(function(b){ b.classList.remove('active'); });
-						var currentBtn = presetWrap.querySelector('[data-preset="'+p+'"]');
-						if (currentBtn) currentBtn.classList.add('active');
-					}
-					// Risincronizza gruppi dipendenti
-					if (typeof syncMfp === 'function') try { syncMfp(); } catch(e){}
-					if (typeof syncLive === 'function') try { syncLive(); } catch(e){}
-					updateLink();
-				}
-				var presetWrap = document.getElementById('presetInstallations');
-				if (presetWrap){
-					presetWrap.querySelectorAll('[data-preset]').forEach(function(btn){
-						btn.addEventListener('click', function(){
-							applyPreset(btn.getAttribute('data-preset'));
-						});
-					});
-				}
-				// expose preset for debug
-				try { window.applyPreset = applyPreset; } catch(e){}
+				// Preset logic rimosso (non più necessario)
+				/*
+				function applyPreset(name){ ... }
+				*/
 				// expose globally for bottom script
 				window.updateLink = updateLink;
 			}
@@ -1009,6 +974,11 @@ function landingTemplate(manifest: any) {
 					<button name="Install">INSTALLA SU STREMIO</button>
 				</a>
 				<button id="copyManifestLink">COPIA MANIFEST URL</button>
+			</div>
+			<div class="kofi-support" style="margin:1.2rem 0 0; text-align:center;">
+				<a href='https://ko-fi.com/G2G41MG3ZN' target='_blank' rel='noopener noreferrer' title='Supporta lo sviluppo su Ko-fi' style='display:inline-block;'>
+					<img height='36' style='border:0;height:36px;vertical-align:middle;' src='https://storage.ko-fi.com/cdn/kofi4.png?v=6' alt='Buy Me a Coffee at ko-fi.com' />
+				</a>
 			</div>
 			${contactHTML}
 		</div>

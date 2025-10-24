@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Auto-normalizzazione AnimeSaturn.
 
-Allineato allo script AnimeUnity:
- - Heuristica: se mal_name contiene una key già presente in genericMap → exactMap, altrimenti genericMap.
- - Inserimento sicuro senza backreference letterali.
- - Idempotenza: se la chiave esiste già non fa nulla.
+AGGIORNATO: tutte le nuove normalizzazioni vengono ora inserite SEMPRE in exactMap
+(ignorata l'heuristica precedente generic vs exact). Manteniamo idempotenza.
+Per tornare al comportamento precedente ripristinare la logica heuristic target_exact.
 """
 
 import os, re, json, sys
@@ -41,43 +40,12 @@ def insert_before_marker(text: str, marker_regex: str) -> tuple[str,int]:
     insertion = f"{indent}{new_line}\n" + text[m.start():m.end()]
     return text[:m.start()] + insertion + text[m.end():], 1
 
-# Heuristic extract generic keys
-generic_section_match = re.search(
-    r"AUTO-NORMALIZATION-GENERIC-MAP-START[\s\S]*?AUTO-NORMALIZATION-GENERIC-MAP-END",
-    content
-)
-generic_keys: list[str] = []
-if generic_section_match:
-    sec = generic_section_match.group(0)
-    generic_keys = [k[1] for k in re.findall(r"^\s*(['\"])(.+?)\1:\s*", sec, re.MULTILINE)]
-
-target_exact = False
-lower_mal = mal_name.lower()
-for gk in generic_keys:
-    if gk and gk != mal_name and gk.lower() in lower_mal:
-        target_exact = True
-        break
-
-print(f"Heuristica: generic_keys={len(generic_keys)} → target={'exactMap' if target_exact else 'genericMap'}")
-
 updated = content
 replacements = 0
-if target_exact:
-    updated, replacements = insert_before_marker(updated, r"(\s*)//\s*<<\s*AUTO-INSERT-EXACT\s*>>")
-    if replacements == 0:
-        print("Marker EXACT non trovato: abort")
-else:
-    updated, replacements = insert_before_marker(updated, r"(\s*)//\s*<<\s*AUTO-INSERT-GENERIC\s*>>")
-    if replacements == 0:
-        print("Marker GENERIC non trovato, provo placeholder")
-        updated, replacements = insert_before_marker(updated, r"(\s*)//\s*Qui puoi aggiungere altre normalizzazioni custom")
-    if replacements == 0:
-        print("Placeholder non trovato, provo fine blocco GENERIC")
-        end_pattern = re.compile(r"//\s*==== AUTO-NORMALIZATION-GENERIC-MAP-END ====")
-        m = end_pattern.search(updated)
-        if m:
-            updated = updated[:m.start()] + f"{new_line}\n" + updated[m.start():]
-            replacements = 1
+# Inserisci sempre in exactMap
+updated, replacements = insert_before_marker(updated, r"(\s*)//\s*<<\s*AUTO-INSERT-EXACT\s*>>")
+if replacements == 0:
+    print("Marker EXACT non trovato: abort")
 
 if replacements == 0:
     print("Error: nessun marker trovato per l'inserimento.")
@@ -88,4 +56,4 @@ if replacements == 0:
 with open(provider_path, "w", encoding="utf-8") as f:
     f.write(updated)
 
-print(f"Successfully added normalization: {new_line.strip()} in {'exactMap' if target_exact else 'genericMap'}")
+print(f"Successfully added normalization: {new_line.strip()} in exactMap (forced mode)")

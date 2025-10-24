@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Script di auto-normalizzazione per AnimeUnity.
 
-Correzioni principali:
- - Heuristica stile AnimeSaturn: se mal_name contiene una chiave esistente di genericMap → inserisci in exactMap, altrimenti genericMap.
- - Rimozione backreference letterale (evita scrittura di \\g<0>).
- - Inserimento sicuro prima del marker mantenendo il commento marker.
- - Idempotenza (nessun duplicato se chiave già presente).
+AGGIORNATO: tutte le nuove normalizzazioni vengono SEMPRE inserite in exactMap
+ignorando la precedente heuristica generic vs exact. Idempotenza mantenuta.
+Per ripristinare l'heuristica reintrodurre il blocco di calcolo target_exact.
 """
 
 import os, re, json, sys
@@ -43,54 +41,12 @@ def insert_before_marker(text: str, marker_regex: str) -> tuple[str,int]:
     insertion = f"{indent}{new_line}\n" + text[m.start():m.end()]
     return text[:m.start()] + insertion + text[m.end():], 1
 
-"""Heuristica (parità con AnimeSaturn):
-Se mal_name contiene (case insensitive) una chiave già in genericMap (diversa da sé) → esegue inserimento in exactMap (titolo più specifico/completo).
-Altrimenti va in genericMap.
-"""
-
-target_exact = False
-
-# Estrai la sezione generic per ricavare le chiavi esistenti
-generic_section_match = re.search(
-    r"AUTO-NORMALIZATION-GENERIC-MAP-START[\s\S]*?AUTO-NORMALIZATION-GENERIC-MAP-END",
-    content
-)
-generic_keys: list[str] = []
-if generic_section_match:
-    sec = generic_section_match.group(0)
-    generic_keys = [k[1] for k in re.findall(r"^\s*(['\"])(.+?)\1:\s*", sec, re.MULTILINE)]
-
-lower_mal = mal_name.lower()
-for gk in generic_keys:
-    if gk and gk != mal_name and gk.lower() in lower_mal:
-        target_exact = True
-        break
-
-print(
-    f"Heuristica: generic_keys={len(generic_keys)} → target={'exactMap' if target_exact else 'genericMap'}"
-)
-
 updated = content
 replacements = 0
-
-if target_exact:
-    updated, replacements = insert_before_marker(updated, r"(\s*)//\s*<<\s*AUTO-INSERT-EXACT\s*>>")
-    if replacements == 0:
-        print("Marker EXACT non trovato: abort.")
-else:
-    # Prova marker principale generic
-    updated, replacements = insert_before_marker(updated, r"(\s*)//\s*<<\s*AUTO-INSERT-GENERIC\s*>>")
-    if replacements == 0:
-        print("Marker GENERIC non trovato, provo commento placeholder")
-        updated, replacements = insert_before_marker(updated, r"(\s*)//\s*Qui puoi aggiungere altre normalizzazioni custom")
-    if replacements == 0:
-        print("Placeholder non trovato, provo fine blocco GENERIC")
-        # Inserisci prima dell'END (non abbiamo indentazione sicura, usiamo semplice regex)
-        end_pattern = re.compile(r"//\s*==== AUTO-NORMALIZATION-GENERIC-MAP-END ====")
-        m = end_pattern.search(updated)
-        if m:
-            updated = updated[:m.start()] + f"{new_line}\n" + updated[m.start():]
-            replacements = 1
+# Inserimento forzato sempre in exactMap
+updated, replacements = insert_before_marker(updated, r"(\s*)//\s*<<\s*AUTO-INSERT-EXACT\s*>>")
+if replacements == 0:
+    print("Marker EXACT non trovato: abort.")
 
 if replacements == 0:
     print("Error: nessun marker trovato per l'inserimento. Verifica i commenti nel provider.")
@@ -101,4 +57,4 @@ if replacements == 0:
 with open(provider_path, "w", encoding="utf-8") as f:
     f.write(updated)
 
-print(f"Successfully added normalization: {new_line.strip()} in {'exactMap' if target_exact else 'genericMap'}")
+print(f"Successfully added normalization: {new_line.strip()} in exactMap (forced mode)")

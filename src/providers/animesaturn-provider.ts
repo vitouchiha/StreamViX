@@ -4,13 +4,13 @@ import * as path from 'path';
 import axios from 'axios';
 import { KitsuProvider } from './kitsu';
 import { getDomain } from '../utils/domains';
-import { checkIsAnimeById } from '../utils/animeGate';
+import { checkIsAnimeById, applyUniversalAnimeTitleNormalization } from '../utils/animeGate';
 
 // Helper function to invoke the Python scraper
 async function invokePythonScraper(args: string[]): Promise<any> {
     const scriptPath = path.join(__dirname, 'animesaturn.py');
     const command = 'python3';
-    
+
     // Ottieni la config globale se disponibile
     let mfpProxyUrl = '';
     let mfpProxyPassword = '';
@@ -21,13 +21,13 @@ async function invokePythonScraper(args: string[]): Promise<any> {
     } catch (e) {
         console.error('Error getting MFP config:', e);
     }
-    
+
     // Aggiungi gli argomenti proxy MFP se presenti
     if (mfpProxyUrl && mfpProxyPassword) {
         args.push('--mfp-proxy-url', mfpProxyUrl);
         args.push('--mfp-proxy-password', mfpProxyPassword);
     }
-    
+
     return new Promise((resolve, reject) => {
         const pythonProcess = spawn(command, [scriptPath, ...args]);
         let stdout = '';
@@ -161,23 +161,29 @@ function filterAnimeResults(
     return results;
   }
   const norm = (s: string) => normalizeApostrophes(normalizeUnicodeToAscii(s.toLowerCase().replace(/\s+/g, ' ').trim()));
-  const base = norm(englishTitle);
+  const clean = (s: string) => s.replace(/\s*\(.*?\)/g, '').replace(/\s*ita|\s*cr|\s*sub/gi, '').trim();
+  const baseRaw = norm(englishTitle);
+  const baseClean = clean(baseRaw);
 
   // Accetta titoli che contengono il base, ignorando suffissi e parentesi
   const isAllowed = (title: string) => {
-    let t = norm(title);
-    // Rimuovi suffissi comuni e parentesi
-    t = t.replace(/\s*\(.*?\)/g, '').replace(/\s*ita|\s*cr|\s*sub/gi, '').trim();
-    return t.includes(base);
+    const tNorm = norm(title);
+    const tClean = clean(tNorm);
+    return (
+      tNorm.includes(baseRaw) ||
+      (baseClean.length > 0 && tNorm.includes(baseClean)) ||
+      (baseClean.length > 0 && tClean.includes(baseClean))
+    );
   };
 
   // Log dettagliato per debug
   console.log('DEBUG filtro:', {
-    base,
+    base: baseRaw,
+    baseClean,
     titoli: results.map(r => ({
       raw: r.version.title,
       norm: norm(r.version.title),
-      afterClean: norm(r.version.title).replace(/\s*\(.*?\)/g, '').replace(/\s*ita|\s*cr|\s*sub/gi, '').trim()
+      afterClean: clean(norm(r.version.title))
     }))
   });
 
@@ -192,7 +198,7 @@ function normalizeTitleForSearch(title: string): string {
   // 1. Mappature esatte inserire qui titoli che hanno in mal i - (devono avvenire prima per evitare che le sostituzioni generiche rovinino la chiave)
   // ==== AUTO-NORMALIZATION-EXACT-MAP-START ====
   const exactMap: Record<string,string> = {
-    "Demon Slayer: Kimetsu no Yaiba - The Movie: Infinity Castle": "Demon Slayer: Kimetsu no Yaiba Infinity Castle",    
+    "Demon Slayer: Kimetsu no Yaiba - The Movie: Infinity Castle": "Demon Slayer: Kimetsu no Yaiba Infinity Castle",
     "Attack on Titan: The Final Season - Final Chapters Part 2": "L'attacco dei Giganti: L'ultimo attacco",
     'Ore dake Level Up na Ken': 'Solo Leveling',
     'Lupin the Third: The Woman Called Fujiko Mine': 'Lupin III - La donna chiamata Fujiko Mine ',
@@ -205,6 +211,12 @@ function normalizeTitleForSearch(title: string): string {
     "Slam Dunk: National Domination! Sakuragi Hanamichi": "Slam Dunk: Zenkoku Seiha Da! - Sakuragi Hanamichi",
     "JoJo's Bizarre Adventure (2012)": "Le Bizzarre Avventure di JoJo",
     "JoJo's Bizarre Adventure: Stardust Crusaders": "Le Bizzarre Avventure di JoJo: Stardust Crusaders",
+        "Cat's Eye (2025)": "Occhi di gatto (2025)",
+        "Cat's\u2665Eye": "Occhi di gatto (2025)",
+
+    "Ranma \u00bd (2024) Season 2": "Ranma \u00bd (2024) 2",
+    "Ranma1/2 (2024) Season 2": "Ranma \u00bd (2024) 2",
+
     // << AUTO-INSERT-EXACT >> (non rimuovere questo commento)
   };
   // ==== AUTO-NORMALIZATIOmN-EXACT-MAP-END ====
@@ -432,7 +444,11 @@ export class AnimeSaturnProvider {
 
   // Funzione generica per gestire la ricerca dato un titolo
   async handleTitleRequest(title: string, seasonNumber: number | null, episodeNumber: number | null, isMovie = false, malId?: string): Promise<{ streams: StreamForStremio[] }> {
-    const normalizedTitle = normalizeTitleForSearch(title);
+    const universalTitle = applyUniversalAnimeTitleNormalization(title);
+    if (universalTitle !== title) {
+      console.log(`[UniversalTitle][Applied] ${title} -> ${universalTitle}`);
+    }
+    const normalizedTitle = normalizeTitleForSearch(universalTitle);
     console.log(`[AnimeSaturn] Titolo normalizzato per ricerca: ${normalizedTitle}`);
     console.log(`[AnimeSaturn] MAL ID passato a searchAllVersions:`, malId ? malId : '(nessuno)');
   console.log('[AnimeSaturn] Query inviata allo scraper (post-normalize):', normalizedTitle);
@@ -480,7 +496,7 @@ export class AnimeSaturnProvider {
       }
       // Preparare gli argomenti per lo scraper Python
       const scrapperArgs = ['get_stream', '--episode-url', targetEpisode.url];
-      
+
       // Aggiungi parametri MFP per lo streaming m3u8 se disponibili
       if (this.config.mfpProxyUrl) {
         scrapperArgs.push('--mfp-proxy-url', this.config.mfpProxyUrl);
@@ -488,7 +504,7 @@ export class AnimeSaturnProvider {
       if (this.config.mfpProxyPassword) {
         scrapperArgs.push('--mfp-proxy-password', this.config.mfpProxyPassword);
       }
-      
+
       const streamResult = await invokePythonScraper(scrapperArgs);
       let streamUrl = streamResult.url;
       let streamHeaders = streamResult.headers || undefined;

@@ -16,6 +16,11 @@ export class GuardaSerieProvider {
   private base: string;
   private hlsInfoCache = new Map<string, { res?: string; size?: string }>();
   private lastSeriesYear: string | null = null; // anno serie estratto da TMDB per filtrare i risultati (non appeso al titolo)
+  // Mappa fast-path: titolo TMDB esatto -> slug (senza base URL, con o senza prefisso serietv/)
+  // Facile da aggiornare: aggiungere coppie nuove secondo necessità.
+  private exactTitleMap: Record<string,string> = {
+    'MONSTERS: La storia di Lyle ed Erik Menendez': 'serietv/3278-monsters-la-storia-di-lyle-ed-erik-menendez-streaming-ita.html'
+  };
 
   constructor(private config: GuardaSerieConfig) {
   const dom = getFullUrl('guardaserie');
@@ -59,10 +64,31 @@ export class GuardaSerieProvider {
     console.log('[GS][handleTmdbRequest] isMovie true -> skip');
     return { streams: [] };
   }
-  console.log('[GS][handleTmdbRequest] start', { tmdbId, season, episode, isMovie });
-      const t = await this.resolveTitle('tmdb', tmdbId, isMovie);
+  // Parsing formato composito: supporta
+  // 1) "123456:1:3" -> id base 123456, season=1, episode=3
+  // 2) "tmdb:123456:1:3" -> id base 123456, season=1, episode=3
+  // Se season/episode già passati (non null) NON vengono sovrascritti (priorità ai parametri espliciti).
+  let rawId = tmdbId;
+  let sSeason = season;
+  let sEpisode = episode;
+  // Rimuovi eventuale prefisso tmdb:
+  if (/^tmdb:/i.test(rawId)) rawId = rawId.replace(/^tmdb:/i, '');
+  // Match pattern numerico con stagione/episodio
+  if (/^\d+:\d+:\d+$/.test(rawId)) {
+    const parts = rawId.split(':');
+    if (parts.length === 3) {
+      const base = parts[0];
+      const ps = parseInt(parts[1]);
+      const pe = parseInt(parts[2]);
+      if (!Number.isNaN(ps) && sSeason == null) sSeason = ps;
+      if (!Number.isNaN(pe) && sEpisode == null) sEpisode = pe;
+      rawId = base; // usa solo la parte ID per TMDB API
+    }
+  }
+  console.log('[GS][handleTmdbRequest] start', { tmdbId, normalizedId: rawId, season: sSeason, episode: sEpisode, isMovie });
+      const t = await this.resolveTitle('tmdb', rawId, isMovie);
   console.log('[GS][handleTmdbRequest] resolved title', t);
-      return this.core(t, season, episode, isMovie);
+      return this.core(t, sSeason, sEpisode, isMovie);
     } catch {
   console.log('[GS][handleTmdbRequest] error fallback empty');
       return { streams: [] };
@@ -74,6 +100,35 @@ export class GuardaSerieProvider {
     if (isMovie) { // difensivo: anche qui evitare elaborazione film
       return { streams: [] };
     }
+  // FAST-PATH exact match: se il titolo corrisponde esattamente a una chiave mappata salta la search.
+  const mappedSlug = this.exactTitleMap[title];
+  if (mappedSlug) {
+    try {
+      const normalizedSlug = mappedSlug.replace(/^\/*/, '');
+      const slugWithSection = /^(serietv|serie|tv)\//i.test(normalizedSlug) ? normalizedSlug : `serietv/${normalizedSlug}`;
+      const seriesUrl = `${this.base}/${slugWithSection.replace(/\/+$/,'')}/`;
+      console.log('[GS][fastPath] exactMatch hit ->', title, '->', seriesUrl);
+      // Recupera episodi direttamente
+      const html = await this.get(seriesUrl);
+      if (html) {
+        // Costruiamo un oggetto fittizio GSSearchResult per riusare fetchEpisodes
+        const pseudo: GSSearchResult = { id: slugWithSection, slug: slugWithSection, title };
+        const eps = await this.fetchEpisodes(pseudo);
+        console.log('[GS][fastPath] episodes found', eps.length);
+        if (!eps.length) return { streams: [] };
+        // Se stagione/episodio non specificati, seleziona come fa core
+        const target = this.selectEpisode(eps, season, episode);
+        if (!target) return { streams: [] };
+        const effSeason = season ?? target.season;
+        const effEpisode = episode ?? target.number;
+        return { streams: await this.fetchEpisodeStreams(pseudo, target, effSeason, effEpisode) };
+      } else {
+        console.log('[GS][fastPath] page fetch failed, fallback to standard search');
+      }
+    } catch (e) {
+      console.log('[GS][fastPath] error fallback to search', (e as any)?.message || e);
+    }
+  }
   let results = await this.search(title, this.lastSeriesYear);
   console.log('[GS][core] initial results', results.length);
 

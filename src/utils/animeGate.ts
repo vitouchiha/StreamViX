@@ -1,6 +1,6 @@
 // Helper to decide if an external ID refers to an Anime title.
 // Strategy:
-// 1) Prefer Haglund mappings for MAL or Kitsu: if present -> isAnime=true.
+// 1) Prefer Haglund mappings for MAL or Kitsu: if present -> isAnime=true. 
 // 2) Soft fallback (configurable via env ANIME_GATE_TMDB_FALLBACK, default true):
 //    call TMDB and consider anime if genres include Animation (id 16) and country is JP
 //    (via production_countries/origin_country/original_language).
@@ -107,6 +107,51 @@ export async function checkIsAnimeById(
     return { isAnime: true, hasMal, hasKitsu, reason: 'tmdb-fallback' };
   }
   return { isAnime: false, hasMal, hasKitsu, reason: 'no-mapping-and-not-animation-jp' };
+}
+
+// =============================================================
+// Universal Anime Title Normalization (scoped minimal variant)
+// Richiesta: normalizzare SOLO le forme specificate di One Punch Man
+//  - One-Punch Man -> One Punch Man
+//  - OnePunch Man  -> One Punch Man
+//  - OnePunchMan   -> One Punch Man
+//  - one punch man (tutto minuscolo) NON deve cambiare
+// Case-sensitive: non applichiamo se la capitalizzazione non corrisponde
+// =============================================================
+export function applyUniversalAnimeTitleNormalization(title: string): string {
+  // Season specific mapping requested: "One-Punch Man Season 2" -> "One Punch Man 2" (idem Season 3)
+  // Gestiamo varianti: One-Punch / One Punch / OnePunch / OnePunchMan + optional space before Man
+  const seasonMatch = title.match(/^One[- ]?Punch ?Man Season (2|3)$/);
+  if (!seasonMatch) {
+    const seasonMatchCompact = title.match(/^OnePunchMan Season (2|3)$/); // es: OnePunchMan Season 2
+    if (seasonMatchCompact) {
+      const num = seasonMatchCompact[1];
+      const norm = `One Punch Man ${num}`;
+      if (title !== norm) console.log(`[UniversalTitle][Normalize] "${title}" -> "${norm}"`);
+      return norm;
+    }
+  } else {
+    const num = seasonMatch[1];
+    const norm = `One Punch Man ${num}`;
+    if (title !== norm) console.log(`[UniversalTitle][Normalize] "${title}" -> "${norm}"`);
+    return norm;
+  }
+  // Pattern 1: One-Punch Man oppure OnePunch Man (gestito da optional trattino)
+  if (/^One[- ]?Punch Man$/.test(title)) {
+    if (title !== 'One Punch Man') {
+      const norm = 'One Punch Man';
+      console.log(`[UniversalTitle][Normalize] "${title}" -> "${norm}"`);
+      return norm;
+    }
+    return title; // già corretto
+  }
+  // Pattern 2: completamente attaccato OnePunchMan
+  if (title === 'OnePunchMan') {
+    const norm = 'One Punch Man';
+    console.log(`[UniversalTitle][Normalize] "${title}" -> "${norm}"`);
+    return norm;
+  }
+  return title;
 }
 
 // Build a placeholder informational stream for IMDB/TMDB anime lookups

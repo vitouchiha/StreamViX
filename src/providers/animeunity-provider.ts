@@ -5,12 +5,13 @@ import { formatMediaFlowUrl } from '../utils/mediaflow';
 import { AnimeUnityConfig, StreamForStremio } from '../types/animeunity';
 import * as path from 'path';
 import axios from 'axios';
-import { checkIsAnimeById } from '../utils/animeGate';
+import { checkIsAnimeById, applyUniversalAnimeTitleNormalization } from '../utils/animeGate';
+import { extractFromUrl } from '../extractors';
 
 // Helper function to invoke the Python scraper
 async function invokePythonScraper(args: string[]): Promise<any> {
     const scriptPath = path.join(__dirname, 'animeunity_scraper.py');
-    
+
     // Use python3, ensure it's in the system's PATH
     const command = 'python3';
 
@@ -54,6 +55,8 @@ interface AnimeUnitySearchResult {
     id: number;
     slug: string;
     name: string;
+    name_it?: string; // Titolo italiano (opzionale)
+    name_eng?: string; // Titolo inglese (opzionale)
     episodes_count: number;
 }
 
@@ -156,22 +159,49 @@ async function getEnglishTitleFromAnyId(id: string, type: 'imdb'|'tmdb'|'kitsu'|
   throw new Error('Impossibile ottenere titolo inglese da nessuna fonte per ' + id);
 }
 
-function filterAnimeResults(results: { version: AnimeUnitySearchResult; language_type: string }[], englishTitle: string) {
-  // LOGICA LEGACY: accetta solo match esatti (base) + varianti (ita/cr)
+function filterAnimeResults(results: { version: AnimeUnitySearchResult; language_type: string }[], searchQuery: string) {
+  // LOGICA: usa il TITOLO CON CUI HAI CERCATO per filtrare (italiano O inglese)
+  // Accetta varianti con (ITA), (CR), ecc. MA esclude sequel con numeri (es: "Title 2")
   const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
-  const base = norm(englishTitle);
-  const allowed = [
-    base,
-    `${base} (ita)`,
-    `${base} (cr)`,
-    `${base} (ita) (cr)`
+  const queryNorm = norm(searchQuery);
+  
+  // Genera le varianti ammesse: base, base + (ita), base + (cr), base + (ita) (cr)
+  // IMPORTANTE: NON rimuovere i numeri dalla query - fanno parte del titolo!
+  const queryBase = queryNorm.replace(/\s*\([^)]*\)/g, '').trim();
+  const allowedVariants = [
+    queryBase,
+    `${queryBase} (ITA)`,
+    `${queryBase} (CR)`,
+    `${queryBase} (ITA) (CR)`,
+    `${queryBase} (CR) (ITA)`
   ];
-  const isAllowed = (title: string) => {
-    const t = norm(title.replace(/\s*\([^)]*\)/g, m => m.toLowerCase()));
-    return allowed.some(a => t === a);
-  };
-  const filtered = results.filter(r => isAllowed(r.version.name));
-  console.log(`[UniversalTitle][Filter][Legacy] Risultati prima del filtro:`, results.map(r => r.version.name));
+  
+  const filtered = results.filter(r => {
+    // Raccogli tutti i titoli disponibili del risultato
+    const titles = [
+      r.version.name_eng || '',
+      r.version.name_it || '',
+      r.version.name || ''
+    ].filter(t => t.trim());
+    
+    // Per ogni titolo disponibile, controlla se matcha con una delle varianti ammesse
+    for (const title of titles) {
+      const titleNorm = norm(title);
+      // Rimuovi solo le parentesi per il confronto (mantieni i numeri!)
+      const titleBase = titleNorm.replace(/\s*\([^)]*\)/g, '').trim();
+      
+      // Match: il titolo base del risultato deve essere UGUALE al queryBase
+      if (titleBase === queryBase) {
+        return true;
+      }
+    }
+    
+    return false;
+  });
+  
+  console.log(`[UniversalTitle][Filter][Legacy] Query ricerca (norm): "${queryNorm}" -> base: "${queryBase}"`);
+  console.log(`[UniversalTitle][Filter][Legacy] Varianti ammesse:`, allowedVariants);
+  console.log(`[UniversalTitle][Filter][Legacy] Risultati prima del filtro:`, results.map(r => `${r.version.name} [it:"${r.version.name_it||'N/A'}" eng:"${r.version.name_eng||'N/A'}"]`));
   console.log(`[UniversalTitle][Filter][Legacy] Risultati dopo il filtro:`, filtered.map(r => r.version.name));
   return filtered;
 }
@@ -180,7 +210,19 @@ function filterAnimeResults(results: { version: AnimeUnitySearchResult; language
 const exactMap: Record<string,string> = {
 
     "Attack on Titan: Final Season - The Final Chapters": "Attack on Titan Final Season THE FINAL CHAPTERS Special 1",
-    "Attack on Titan: The Final Season - Final Chapters Part 2": "Attack on Titan Final Season THE FINAL CHAPTERS Special 2",   
+    "Attack on Titan: The Final Season - Final Chapters Part 2": "Attack on Titan Final Season THE FINAL CHAPTERS Special 2",
+
+        "Attack on Titan OAD": "Attack on Titan OVA",
+
+
+        "Cat's\u2665Eye": "Occhi di gatto (2025)",
+    "Attack on Titan: Final Season": "Attack on Titan: The Final Season",
+    "Attack on Titan: Final Season Part 2": "Attack on Titan: The Final Season Part 2",
+
+
+    "Ranma \u00bd (2024) Season 2": "Ranma \u00bd (2024) 2",
+    "Ranma1/2 (2024) Season 2": "Ranma \u00bd (2024) 2",
+
 
     // << AUTO-INSERT-EXACT >> (non rimuovere questo commento)
 };
@@ -365,7 +407,11 @@ export class AnimeUnityProvider {
   }
 
   async handleTitleRequest(title: string, seasonNumber: number | null, episodeNumber: number | null, isMovie = false): Promise<{ streams: StreamForStremio[] }> {
-    const normalizedTitle = normalizeTitleForSearch(title);
+    const universalTitle = applyUniversalAnimeTitleNormalization(title);
+    const normalizedTitle = normalizeTitleForSearch(universalTitle);
+    if (universalTitle !== title) {
+      console.log(`[UniversalTitle][Applied] ${title} -> ${universalTitle}`);
+    }
     console.log(`[AnimeUnity] Titolo normalizzato per ricerca: ${normalizedTitle}`);
     // Se il titolo originale è una chiave dell'exactMap allora saltiamo qualsiasi filtro successivo:
     // l'intento dell'utente è: se la ricerca parte da una chiave exactMap, NON applicare filterAnimeResults
@@ -421,12 +467,48 @@ export class AnimeUnityProvider {
       animeVersions = filterAnimeResults(animeVersions, normalizedTitle);
     } else {
       console.log('[AnimeUnity][ExactMap] Uso risultati grezzi senza filtro (exactMap).');
+      // STRICT EXACT FILTER: per le richieste exactMap, manteniamo SOLO i risultati
+      // il cui nome base NON contiene parole extra rispetto agli altri risultati dello stesso gruppo.
+      // Esempio: se troviamo "Final Season" e "Final Season Parte 2", teniamo solo i primi.
+      // IMPORTANTE: AnimeUnity restituisce nomi in italiano, quindi confrontiamo i risultati tra loro,
+      // non con il titolo inglese di input.
+      try {
+        const before = animeVersions.length;
+        console.log(`[AnimeUnity][ExactMap][StrictFilter] Risultati da filtrare (${before}):`);
+        
+        // Estrai i nomi base (senza parentesi) di tutti i risultati
+        const baseNames = animeVersions.map(v => {
+          const base = v.version.name
+            .replace(/\([^)]*\)/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+          console.log(`  name="${v.version.name}" -> base="${base}"`);
+          return base;
+        });
+        
+        // Trova il nome più corto (quello senza "Parte 2", "Part 2", ecc.)
+        const sortedByLength = [...baseNames].sort((a, b) => a.length - b.length);
+        const shortestBase = sortedByLength[0];
+        console.log(`[AnimeUnity][ExactMap][StrictFilter] Nome base più corto (target): "${shortestBase}"`);
+        
+        // Filtra: mantieni solo i risultati che matchano esattamente il nome più corto
+        animeVersions = animeVersions.filter((v, idx) => {
+          const match = baseNames[idx] === shortestBase;
+          console.log(`  [${idx}] "${v.version.name}" -> match=${match}`);
+          return match;
+        });
+        
+        console.log(`[AnimeUnity][ExactMap][StrictFilter] DOPO filtro: ${animeVersions.length} risultati rimasti`);
+      } catch (e) {
+        console.warn('[AnimeUnity][ExactMap][StrictFilter] errore:', (e as any)?.message || e);
+      }
     }
     if (!animeVersions.length) {
       console.warn('[AnimeUnity] Nessun risultato trovato per il titolo:', normalizedTitle);
       return { streams: [] };
     }
-    const streams: StreamForStremio[] = [];
+  const streams: StreamForStremio[] = [];
     const seenLinks = new Set();
     for (const { version, language_type } of animeVersions) {
       const episodes: AnimeUnityEpisode[] = await invokePythonScraper(['get_episodes', '--anime-id', String(version.id)]);
@@ -457,38 +539,169 @@ export class AnimeUnityProvider {
         '--anime-slug', version.slug,
         '--episode-id', String(targetEpisode.id)
       ]);
-      if (streamResult.mp4_url) {
-        const mediaFlowUrl = formatMediaFlowUrl(
-          streamResult.mp4_url,
-          this.config.mfpUrl,
-          this.config.mfpPassword
-        );
-        const cleanName = version.name
-          .replace(/\s*\(ITA\)/i, '')
-          .replace(/\s*\(CR\)/i, '')
-          .replace(/ITA/gi, '')
-          .replace(/CR/gi, '')
-          .trim();
-  const sNum = seasonNumber || 1;
-  const langLabel = language_type === 'ITA' ? 'ITA' : 'SUB';
-  let streamTitle = `${capitalize(cleanName)} ▪ ${langLabel} ▪ S${sNum}`;
-        if (episodeNumber) {
-          streamTitle += `E${episodeNumber}`;
-        }
-        // Filtra duplicati per url
-        if (!seenLinks.has(mediaFlowUrl)) {
-          streams.push({
-            title: streamTitle,
-            url: mediaFlowUrl,
-            behaviorHints: {
-              notWebReady: true
-            }
+  const preferMp4 = /^(1|true|on)$/i.test(String(process.env.ANIMEUNITY_PREFER_MP4||'0'));
+  let added = false;
+  let hls403 = false;
+      const cleanName = version.name
+        .replace(/\s*\(ITA\)/i, '')
+        .replace(/\s*\(CR\)/i, '')
+        .replace(/ITA/gi, '')
+        .replace(/CR/gi, '')
+        .trim();
+      const sNum = seasonNumber || 1;
+      const langLabel = language_type === 'ITA' ? 'ITA' : 'SUB';
+      let baseTitle = `${capitalize(cleanName)} ▪ ${langLabel} ▪ S${sNum}`;
+      if (episodeNumber) baseTitle += `E${episodeNumber}`;
+      // 1. Prova HLS se non forzato MP4 e embed disponibile
+      if (!preferMp4 && streamResult.embed_url) {
+        try {
+          const hlsRes = await extractFromUrl(streamResult.embed_url, {
+            referer: streamResult.episode_page,
+            mfpUrl: this.config.mfpUrl,
+            mfpPassword: this.config.mfpPassword,
+            titleHint: baseTitle
           });
-          seenLinks.add(mediaFlowUrl);
+          if (hlsRes.streams && hlsRes.streams.length) {
+            for (const st of hlsRes.streams) {
+              if (!st || !st.url) continue;
+              if (seenLinks.has(st.url)) continue;
+              streams.push(st);
+              seenLinks.add(st.url);
+              added = true;
+
+              // === FHD VARIANT BRANCH (non invasivo) ===
+              // Genera una seconda variante solo 1080 (fallback 720 -> 480) se il master è multi-bitrate (#EXT-X-STREAM-INF)
+              // Mantiene logica attuale (AUTO) intatta. Prepara behaviorHints per futuri toggle (AUTO/FHD)
+              try {
+                const masterUrl = st.url;
+                // Scarica playlist master
+                const respPl = await fetch(masterUrl, { headers: (st as any)?.behaviorHints?.requestHeaders || {} });
+                if (respPl.ok) {
+                  const playlistText = await respPl.text();
+                  if (/EXT-X-STREAM-INF/i.test(playlistText)) {
+                    // Parse varianti
+                    interface VariantEntry { line: string; url: string; height: number; bandwidth?: number; }
+                    const lines = playlistText.split(/\r?\n/);
+                    const variants: VariantEntry[] = [];
+                    for (let i=0;i<lines.length;i++) {
+                      const line = lines[i];
+                      if (/^#EXT-X-STREAM-INF:/i.test(line)) {
+                        const nextUrl = lines[i+1] || '';
+                        if (nextUrl.startsWith('#') || !nextUrl.trim()) continue;
+                        let height = 0;
+                        const resMatch = line.match(/RESOLUTION=\d+x(\d+)/i);
+                        if (resMatch) height = parseInt(resMatch[1]);
+                        const bwMatch = line.match(/BANDWIDTH=(\d+)/i);
+                        const bw = bwMatch ? parseInt(bwMatch[1]) : undefined;
+                        variants.push({ line, url: nextUrl.trim(), height, bandwidth: bw });
+                      }
+                    }
+                    if (variants.length) {
+                      // Ordina per altezza desc, poi bandwidth
+                      variants.sort((a,b)=> (b.height - a.height) || ((b.bandwidth||0)-(a.bandwidth||0)) );
+                      const best = variants[0];
+                      console.log('[AnimeUnity][FHDVariant][Parse]', variants.map(v=>`${v.height}p`).join(','), 'best=', best.height);
+                      let variantUrl = best.url;
+                      // Rendi assoluto se relativo
+                      if (!/^https?:\/\//i.test(variantUrl)) {
+                        try {
+                          const mu = new URL(masterUrl);
+                          variantUrl = new URL(variantUrl, mu).toString();
+                        } catch {}
+                      }
+                      // Inserisci .m3u8 dopo /playlist/<num> se mancante
+                      variantUrl = variantUrl.replace(/(\/playlist\/(\d+))(?!\.m3u8)(?=[^\w]|$)/, '$1.m3u8');
+                      // Mantieni query string eventuale (regex sopra non la rimuove)
+                      if (!seenLinks.has(variantUrl)) {
+                        const markAsFhd = best.height >= 720; // badge per 720p o superiore
+                        if (!markAsFhd) console.log('[AnimeUnity][FHDVariant] Altezza migliore <720p, non marchio FHD:', best.height);
+                        // Manteniamo il titolo identico all'AUTO (niente 🅵🅷🅳 qui) e spostiamo il marker in un behaviorHint
+                        const fhdTitle = st.title; // niente suffisso nel titolo principale
+                        const behaviorHints: any = { ...(st.behaviorHints||{}), animeunityQuality: markAsFhd ? 'FHD' : 'HQ', animeunityResolution: best.height, animeunityNameSuffix: markAsFhd ? ' 🅵🅷🅳' : '' };
+                        // Copia headers se presenti
+                        if ((st as any)?.behaviorHints?.requestHeaders) {
+                          behaviorHints.requestHeaders = (st as any).behaviorHints.requestHeaders;
+                        }
+                        streams.push({
+                          title: fhdTitle,
+                          url: variantUrl,
+                          behaviorHints,
+                          isSyntheticFhd: markAsFhd
+                        });
+                        seenLinks.add(variantUrl);
+                        console.log('[AnimeUnity][FHDVariant] Aggiunta variante', variantUrl.substring(0,120), 'height=', best.height, 'flagFHD=', markAsFhd);
+                      }
+                    }
+                  }
+                }
+              } catch (fhde) {
+                console.warn('[AnimeUnity][FHDVariant] errore generazione variante FHD:', (fhde as any)?.message || fhde);
+              }
+              // === END FHD VARIANT BRANCH ===
+            }
+          }
+        } catch (e) {
+          const msg = (e as any)?.message || String(e);
+          if (/403/.test(msg)) {
+            hls403 = true;
+            console.warn('[AnimeUnity] HLS extractor 403 – consentito fallback MP4 (se MFP configurato)');
+          } else {
+            console.warn('[AnimeUnity] HLS extractor fallito (non 403):', msg);
+          }
+        }
+      }
+      // 2. Fallback MP4 policy:
+      //    - Sempre se preferMp4=true
+      //    - Oppure se HLS ha dato 403 (hls403) e non abbiamo stream HLS
+      //    - In caso hls403 richiede MFP configurato (mfpUrl + mfpPassword) per sicurezza
+      const mfpConfigured = !!(this.config.mfpUrl && this.config.mfpPassword);
+      const allowMp4 = preferMp4 || (hls403 && !added);
+      if (allowMp4 && streamResult.mp4_url) {
+        if (!preferMp4 && hls403 && !mfpConfigured) {
+          console.log('[AnimeUnity] MP4 non mostrato: HLS 403 ma MFP non configurato');
+        } else {
+        try {
+          const mediaFlowUrl = formatMediaFlowUrl(
+            streamResult.mp4_url,
+            this.config.mfpUrl,
+            this.config.mfpPassword
+          );
+          if (!seenLinks.has(mediaFlowUrl)) {
+            streams.push({
+              title: baseTitle + (added ? ' (MP4)' : (preferMp4 ? ' (MP4 Preferred)' : ' (MP4 Fallback)')),
+              url: mediaFlowUrl,
+              behaviorHints: { notWebReady: true }
+            });
+            seenLinks.add(mediaFlowUrl);
+          }
+        } catch (e) {
+          console.warn('[AnimeUnity] Errore fallback MP4:', (e as any)?.message || e);
+        }
         }
       }
     }
-    return { streams };
+    // Filtro finale: nessuna selezione => solo AUTO (master). AUTO implicito se nessun toggle.
+  const autoFlag = this.config.animeunityAuto === true;
+  const fhdFlag = this.config.animeunityFhd === true;
+  const autoWanted = autoFlag || (!autoFlag && !fhdFlag); // default AUTO if none selected
+  const fhdWanted = fhdFlag;
+    const filtered = streams.filter(st => {
+      const qual = st.behaviorHints?.animeunityQuality;
+      if (qual === 'FHD') return fhdWanted;
+      return autoWanted; // master (AUTO)
+    });
+    // Post-process: if FHD selected (or both), ensure provider label shows FHD by setting isFhdOrDual equivalent hint
+    try {
+      if (fhdWanted) {
+        filtered.forEach(st => {
+          if (st.behaviorHints?.animeunityQuality === 'FHD') {
+            // Provide a generic flag some naming layers may inspect
+            st.behaviorHints.animeunityIsFhd = true;
+          }
+        });
+      }
+    } catch(e) { /* no-op */ }
+    return { streams: filtered };
   }
 }
 

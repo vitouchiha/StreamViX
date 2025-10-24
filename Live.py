@@ -389,7 +389,9 @@ def map_category(category_src: str, raw_event: str) -> str | None:
     if category_src == 'Basketball':
         # Solo NBA, LBA (Italiano), Euroleague / Eurolega / Coppa Italia Basket
         if re.search(r'\bNBA\b', raw_event, re.IGNORECASE): return 'basket'
+        # Riconosci anche "Lega A" come sinonimo di LBA (a volte formattato "Lega A : Team1 vs Team2")
         if re.search(r'\bLBA\b', raw_event, re.IGNORECASE): return 'basket'
+        if re.search(r'\bLega\s*A\b', raw_event, re.IGNORECASE): return 'basket'
         if re.search(r'\bFIBA\b', raw_event, re.IGNORECASE): return 'basket'
         if re.search(r'\bEurobasket\b', raw_event, re.IGNORECASE): return 'basket'
         if re.search(r'Euroleague|Eurolega', raw_event, re.IGNORECASE): return 'basket'
@@ -791,20 +793,27 @@ def main():
         for k,v in sorted(debug_categories.items()):
             print(f" - {k}: {v} eventi grezzi")
         # Post-processing: inject PD streams & update pdUrlF for static channels
-        print("[PD][HOOK] Avvio post-processing pig_channels ...")
-        print(f"[PD][HOOK] OUTPUT_FILE={OUTPUT_FILE} TV_CHANNELS_DB={TV_CHANNELS_DB}")
-        try:
-            import importlib, importlib.util, sys as _sys
-            if 'pig_channels' in globals() or 'pig_channels' in _sys.modules:
-                print("[PD][HOOK] pig_channels già caricato, riutilizzo modulo")
-            from pig_channels import run_post_live
-            print("[PD][HOOK] run_post_live importato, esecuzione...")
-            run_post_live(OUTPUT_FILE, TV_CHANNELS_DB, dry_run=False)
-            print("[PD][HOOK] post-processing completato")
-        except Exception as e:
-            import traceback as _tb
-            print(f"[PD][HOOK][ERR] Post-processing failed: {e}")
-            _tb.print_exc()
+        # Check PD_ENABLE env variable (default enabled)
+        pd_enable_raw = os.environ.get('PD_ENABLE', '0').lower()
+        pd_enabled = pd_enable_raw in ['1', 'true', 'on', 'yes']
+        
+        if not pd_enabled:
+            print("[PD][HOOK] PD_ENABLE disabilitato, skip post-processing pig_channels")
+        else:
+            print("[PD][HOOK] Avvio post-processing pig_channels ...")
+            print(f"[PD][HOOK] OUTPUT_FILE={OUTPUT_FILE} TV_CHANNELS_DB={TV_CHANNELS_DB}")
+            try:
+                import importlib, importlib.util, sys as _sys
+                if 'pig_channels' in globals() or 'pig_channels' in _sys.modules:
+                    print("[PD][HOOK] pig_channels già caricato, riutilizzo modulo")
+                from pig_channels import run_post_live
+                print("[PD][HOOK] run_post_live importato, esecuzione...")
+                run_post_live(OUTPUT_FILE, TV_CHANNELS_DB, dry_run=False)
+                print("[PD][HOOK] post-processing completato")
+            except Exception as e:
+                import traceback as _tb
+                print(f"[PD][HOOK][ERR] Post-processing failed: {e}")
+                _tb.print_exc()
     except Exception as e:
         print(f"Errore scrittura output: {e}")
 
@@ -816,6 +825,8 @@ def _norm_channel_name(name: str) -> str:
     n = re.sub(r'ZONA', '1', n)
     n = re.sub(r'\s+', ' ', n)
     n = n.strip()
+    # Normalizza SPORTS -> SPORT (per matching Vavoo "Sky Sports F1" vs "Sky Sport F1")
+    n = re.sub(r'\bSPORTS\b', 'SPORT', n)
     # Sky numerico: "SKY SPORT 251" o "SKY SPORT 1" ecc.
     n = re.sub(r'(\bSKY SPORT\b)\s+(\d{1,3})', r'\1 \2', n)
     # Dazn numerico: "DAZN 1", "DAZN 2" ecc.

@@ -30,8 +30,6 @@ import * as util from 'util';
 import { fetchPage } from './providers/flaresolverr';
 // Live gdplayer runtime resolver (for tagging)
 import { resolveGdplayerForChannel, inferGdplayerSlug } from './extractors/gdplayerRuntime';
-// Amstaff updater
-import { startAmstaffScheduler } from './utils/amstaffUpdater';
 
 // ================= TYPES & INTERFACES =================
 interface AddonConfig {
@@ -579,7 +577,7 @@ function isCfDlhdProxy(u: string): boolean { return extractDlhdIdFromCf(u) !== n
 // ================= MANIFEST BASE (restored) =================
 const baseManifest: Manifest = {
     id: "org.stremio.vixcloud",
-    version: "8.1.23",
+    version: "8.0.23",
     name: "StreamViX | Elfhosted",
     description: "StreamViX addon con VixSRC, Guardaserie, Altadefinizione, AnimeUnity, AnimeSaturn, AnimeWorld, Eurostreaming, TV ed Eventi Live",
     background: "https://raw.githubusercontent.com/qwertyuiop8899/StreamViX/refs/heads/main/public/backround.png",
@@ -595,7 +593,7 @@ const baseManifest: Manifest = {
                     name: "genre",
                     options: [
                         "RAI",
-                        "Mediaset",
+                        "Mediaset"
                         "Sky",
                         "Sport",
                         "Cinema",
@@ -2168,33 +2166,18 @@ function createBuilder(initialConfig: AddonConfig = {}) {
         async ({
             id,
             type,
-            config: requestConfig
         }: {
             id: string;
             type: string;
-            config?: any;
         }): Promise<{
             streams: Stream[];
         }> => {
             try {
                 console.log(`🔍 Stream request: ${type}/${id}`);
 
-                // FIXED: Usa config dalla richiesta se disponibile, altrimenti usa cache
-                // e aggiorna cache se la richiesta ha MFP
-                let config = { ...configCache };
-                if (requestConfig && Object.keys(requestConfig).length > 0) {
-                    console.log(`🔧 [SPON-FIX] Config received from request:`, requestConfig);
-                    config = { ...config, ...requestConfig };
-                    // Aggiorna cache se requestConfig ha MFP
-                    if (requestConfig.mediaFlowProxyUrl || requestConfig.mediaFlowProxyPassword) {
-                        console.log(`🔧 [SPON-FIX] Updating configCache with MFP from request`);
-                        Object.assign(configCache, {
-                            mediaFlowProxyUrl: requestConfig.mediaFlowProxyUrl || configCache.mediaFlowProxyUrl,
-                            mediaFlowProxyPassword: requestConfig.mediaFlowProxyPassword || configCache.mediaFlowProxyPassword
-                        });
-                    }
-                }
-                console.log(`🔧 Using config for stream (MFP: ${config.mediaFlowProxyUrl ? 'SET' : 'MISSING'}):`, config);
+                // ✅ USA SEMPRE la configurazione dalla cache globale più aggiornata
+                const config = { ...configCache };
+                console.log(`🔧 Using global config cache for stream:`, config);
 
                 const allStreams: Stream[] = [];
 
@@ -2316,7 +2299,7 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                         return mapped.join(' ');
                     }
                     try {
-                        const enableGdPlayer = /^(1|true|on)$/i.test(String(process?.env?.GDPLAYER_ENABLE||'1'));
+                        const enableGdPlayer = /^(1|true|on)$/i.test(String(process?.env?.GDPLAYER_ENABLE||''));
                         if (enableGdPlayer && mfpUrl && mfpPsw && !(channel as any)._dynamic) { // richiede MFP configurato
                             const logEnabled = /^(1|true|on)$/i.test(String(process?.env?.GDPLAYER_LOG||'1'));
                             const inferredSlug = inferGdplayerSlug(channel as any);
@@ -2632,10 +2615,7 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                                                     (channel as any).staticUrlD_CF = buildCfProxyFromId(gd.code, addonBaseUrl);
                                                     debugLog(`[DynamicStreams][D_CF] sintetizzato da GD code=${gd.code} base=${addonBaseUrl} (EXTRACTOR)`);
                                                 }
-                                            } catch (e) {
-                                                const errorMsg = (e as any)?.message || String(e);
-                                                console.error(`[DLHD][FAIL][SYNTHESIS-GD-EXTRACTOR] Canale: ${channel.name || 'N/A'} | GD code: ${gd.code || 'N/A'} | Errore: ${errorMsg}`);
-                                            }
+                                            } catch {}
                                         }
                                     } catch {/* silent */}
                                 }
@@ -2674,10 +2654,7 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                                     debugLog(`[DynamicStreams][D_CF] sintetizzato da GD code=${gd.code} base=${addonBaseUrl} (PLACEHOLDER)`);
                                 }
                             }
-                        } catch (e) {
-                            const errorMsg = (e as any)?.message || String(e);
-                            console.error(`[DLHD][FAIL][SYNTHESIS-GD-PLACEHOLDER] Canale: ${channel.name || 'N/A'} | Errore: ${errorMsg}`);
-                        }
+                        } catch {}
                         streams.push({ url: (channel as any).placeholderVideo || (channel as any).logo || (channel as any).poster || '', title: 'Nessuno Stream' });
                         dynamicHandled = true;
                     } else {
@@ -2821,7 +2798,6 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                     }
 
                     // staticUrlMpd (sempre attivo se presente, non dipende da enableMpd)
-                    console.log(`🔧 [staticUrlMpd] DEBUG - channel has staticUrlMpd? ${!!(channel as any).staticUrlMpd}`);
                     if ((channel as any).staticUrlMpd) {
                         console.log(`🔧 [staticUrlMpd] Raw URL: ${(channel as any).staticUrlMpd}`);
                         const decodedUrl = decodeStaticUrl((channel as any).staticUrlMpd);
@@ -2885,8 +2861,6 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                                 }
                             }
                         } catch (e) {
-                            const errorMsg = (e as any)?.message || String(e);
-                            console.error(`[DLHD][FAIL][SYNTHESIS-STREAM] Canale: ${channel.name || 'N/A'} | ID: ${channel.id || 'N/A'} | Errore: ${errorMsg}`);
                             debugLog(`[DynamicStreams][D_CF] errore sintesi da stream DLHD:`, e);
                         }
                     }
@@ -2896,50 +2870,20 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                             let cfUrl = (channel as any).staticUrlD_CF as string;
                             
                             // Sostituisci placeholder {usableAddonBase} con l'URL reale dell'addon
+                            const addonBaseUrl = (config as any).addonBase || '';
                             if (cfUrl.includes('{usableAddonBase}')) {
-                                let addonBaseUrl = '';
-                                
-                                // Tentativo 1: Rilevamento automatico dalla richiesta corrente (PRIORITÀ MASSIMA)
-                                try {
-                                    const lastReq: any = (global as any).lastExpressRequest;
-                                    if (lastReq) {
-                                        const protocol = lastReq.protocol || 'https';
-                                        const host = lastReq.get('host') || lastReq.headers?.host || '';
-                                        if (host) {
-                                            addonBaseUrl = `${protocol}://${host}`;
-                                            debugLog(`[DLHD] addonBase rilevato automaticamente dalla richiesta: ${addonBaseUrl}`);
-                                        }
-                                    }
-                                } catch (e) {
-                                    debugLog(`[DLHD] Errore rilevamento automatico addonBase:`, e);
-                                }
-                                
-                                // Fallback 2: Variabile ambiente ADDON_BASE_URL
-                                if (!addonBaseUrl) {
+                                if (addonBaseUrl) {
+                                    cfUrl = cfUrl.replace('{usableAddonBase}', addonBaseUrl.replace(/\/$/, ''));
+                                } else {
+                                    // Se non abbiamo addonBase, prova a costruirlo da ENV
                                     const envBase = (process && process.env && process.env.ADDON_BASE_URL) ? String(process.env.ADDON_BASE_URL).trim() : '';
                                     if (envBase) {
-                                        addonBaseUrl = envBase;
-                                        debugLog(`[DLHD] addonBase da variabile ambiente: ${addonBaseUrl}`);
+                                        cfUrl = cfUrl.replace('{usableAddonBase}', envBase.replace(/\/$/, ''));
+                                    } else {
+                                        console.warn('[DLHD] Impossibile sostituire {usableAddonBase}: addonBase non disponibile');
+                                        throw new Error('addonBase non disponibile per sostituire placeholder');
                                     }
                                 }
-                                
-                                // Fallback 3: Config runtime (landing page)
-                                if (!addonBaseUrl) {
-                                    const configBase = (config as any).addonBase || '';
-                                    if (configBase) {
-                                        addonBaseUrl = configBase;
-                                        debugLog(`[DLHD] addonBase da config runtime: ${addonBaseUrl}`);
-                                    }
-                                }
-                                
-                                // Fallback 4: Dominio pubblico default (come VixSrc)
-                                if (!addonBaseUrl) {
-                                    addonBaseUrl = 'https://streamvix.hayd.uk';
-                                    console.log(`[DLHD] Fallback a dominio pubblico default: ${addonBaseUrl}`);
-                                }
-                                
-                                cfUrl = cfUrl.replace('{usableAddonBase}', addonBaseUrl.replace(/\/$/, ''));
-                                debugLog(`[DLHD] Placeholder sostituito: {usableAddonBase} -> ${addonBaseUrl}`);
                             }
                             
                             // Normalizza solo formati legacy
@@ -3018,11 +2962,6 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                                 debugLog(`Aggiunto staticUrlD_CF normalizzato static id=${newId} (title='${finalTitle}')`);
                             }
                         } catch (e) {
-                            const errorMsg = (e as any)?.message || String(e);
-                            const errorCode = errorMsg.includes('addonBase non disponibile') ? 'NO_ADDON_BASE' 
-                                            : errorMsg.includes('id non estratto') ? 'ID_EXTRACTION_FAILED' 
-                                            : 'UNKNOWN';
-                            console.error(`[DLHD][FAIL] Canale: ${channel.name || 'N/A'} | ID: ${channel.id || 'N/A'} | Errore: ${errorCode} | Dettagli: ${errorMsg}`);
                             debugLog(`Errore gestione staticUrlD_CF: ${e}`);
                         }
                     }
@@ -3223,26 +3162,20 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                         // === SPON (sportzonline) injection (always-on, no placeholders / no time gating) ===
                         try {
                             const eventName = (channel as any).name || '';
-                            
                             if (!eventName) {
-                                // skip silently
+                                // nothing
                             } else {
                                 const { fetchSponSchedule, matchRowsForEvent, debugExtractTeams } = await import('./extractors/sponSchedule');
                                 const { extractSportzonlineStream } = await import('./extractors/sportsonline');
-                                
-                                const schedule = await fetchSponSchedule(false).catch((err)=>{ console.log('[SPON] ❌ Schedule fetch failed:', err.message); return [] as any[]; });
-                                
+                                const schedule = await fetchSponSchedule(false).catch(()=>[] as any[]);
                                 if (!Array.isArray(schedule) || !schedule.length) {
-                                    console.log(`[SPON] ⚠️ No schedule data available`);
                                     debugLog(`[SPON][DEBUG] schedule empty/invalid for '${eventName}'`);
                                 } else {
+                                    try { const dbg = debugExtractTeams(eventName); debugLog(`[SPON][DEBUG] parsed teams t1='${dbg.team1}' t2='${dbg.team2}' raw='${dbg.raw}'`); } catch {}
                                     const matched = matchRowsForEvent({ name: eventName }, schedule as any) || [];
-                                    
                                     if (!matched.length) {
-                                        console.log(`[SPON] 🔍 Event NOT found: "${eventName}"`);
                                         debugLog(`[SPON][DEBUG] matched=0 for '${eventName}'`);
                                     } else {
-                                        console.log(`[SPON] ✅ Event found: "${eventName}" → ${matched.length} streams`);
                                         // Calcolo solo per futureTag (no gating)
                                         let eventStart: Date | null = null; let futureTag = '';
                                         try {
@@ -3256,16 +3189,11 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                                             const deltaMs = eventStart.getTime() - Date.now();
                                             if (deltaMs > 0) futureTag = ` (Inizia alle ${matched[0].time})`;
                                         } catch {}
-                                        // FIXED: usa fallback a configCache se config è vuoto (seconda chiamata stream)
-                                        const effectiveConfig = (config && (config.mediaFlowProxyUrl || config.mediaFlowProxyPassword)) ? config : configCache;
-                                        const mfpUrl = (effectiveConfig.mediaFlowProxyUrl || process.env.MFP_URL || process.env.MEDIAFLOW_PROXY_URL || '').toString().trim();
-                                        const mfpPsw = (effectiveConfig.mediaFlowProxyPassword || process.env.MFP_PASSWORD || process.env.MEDIAFLOW_PROXY_PASSWORD || process.env.MFP_PSW || '').toString().trim();
-                                        
+                                        const mfpUrl = (config.mediaFlowProxyUrl || process.env.MFP_URL || process.env.MEDIAFLOW_PROXY_URL || '').toString().trim();
+                                        const mfpPsw = (config.mediaFlowProxyPassword || process.env.MFP_PASSWORD || process.env.MEDIAFLOW_PROXY_PASSWORD || process.env.MFP_PSW || '').toString().trim();
                                         if (!mfpUrl || !mfpPsw) {
-                                            // Skip silently (seconda chiamata senza config)
                                             debugLog(`[SPON] MFP non configurato -> salto wrap per '${eventName}'`);
                                         } else {
-                                            console.log('[SPON] ✓ MFP OK');
                                             const seen = new Set<string>();
                                             const collected: Stream[] = [];
                                             for (const row of matched.slice(0,12)) {
@@ -3334,10 +3262,7 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                                     }
                                 }
                             }
-                        } catch (e) { 
-                            console.log('[SPON] ❌ Error:', (e as any)?.message || e); 
-                            debugLog('[SPON] injection error', e); 
-                        }
+                        } catch (e) { debugLog('[SPON] injection error', e); }
                         const allowVavooClean = true; // simplified: always allow clean Vavoo variant
                         for (const s of streams) {
                             // Support special marker '#headers#<b64json>' to attach headers properly
@@ -4393,10 +4318,9 @@ app.get('/dlhd_key', async (req: Request, res: Response) => {
         });
 
         res.setHeader('Content-Type', 'application/octet-stream');
-        res.setHeader('Cache-Control', 'no-store'); // NO CACHE - keys change frequently!
+        res.setHeader('Cache-Control', 'max-age=3600'); // Cache keys for 1 hour
         res.send(keyBuffer);
     } catch (error) {
-        console.error('[DLHD_KEY] ❌ Error:', (error as any)?.message || error);
         res.status(500).send('Error fetching key: ' + ((error as any)?.message || 'Internal error'));
     }
 });
@@ -4774,19 +4698,14 @@ app.get('/static/reload', (req: Request, res: Response) => {
         _loadStaticChannelsIfChanged(true); // forza reload
         const changed = (_staticFileLastHash !== beforeHash) || (_staticFileLastMtime !== beforeMtime);
         let pdCount = 0;
-        let mpdCount = 0;
-        for (const c of staticBaseChannels) {
-            if (c && (c as any).pdUrlF) pdCount++;
-            if (c && (c as any).staticUrlMpd) mpdCount++;
-        }
+        for (const c of staticBaseChannels) if (c && (c as any).pdUrlF) pdCount++;
         const total = staticBaseChannels.length;
-        console.log(`[TV][RELOAD][API] /static/reload changed=${changed} total=${total} pdUrlF=${pdCount} staticUrlMpd=${mpdCount} hash=${_staticFileLastHash.slice(0,12)}`);
+        console.log(`[TV][RELOAD][API] /static/reload changed=${changed} total=${total} pdUrlF=${pdCount} hash=${_staticFileLastHash.slice(0,12)}`);
         return res.json({
             ok: true,
             changed,
             total,
             pdUrlF: pdCount,
-            staticUrlMpd: mpdCount,
             mtime: _staticFileLastMtime ? new Date(_staticFileLastMtime).toISOString() : null,
             hash: _staticFileLastHash,
         });
@@ -5120,14 +5039,4 @@ function scheduleDailyReload() {
     }, delay);
 }
 setTimeout(() => scheduleDailyReload(), 9000);
-// ====================================================================
-
-// =============== AMSTAFF AUTO-UPDATER ================================
-// Avvia aggiornamento automatico canali Amstaff ogni ora
-try {
-    startAmstaffScheduler();
-    console.log('✅ Amstaff auto-updater attivato');
-} catch (e) {
-    console.error('❌ Errore avvio Amstaff updater:', e);
-}
 // ====================================================================

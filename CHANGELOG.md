@@ -1,5 +1,316 @@
 # Changelog
 
+## [1.9.16](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.15...v1.9.16) (2025-10-23)
+
+
+### Bug Fixes
+
+* add gd env ([7cc53f8](https://github.com/qwertyuiop8899/streamvix/commit/7cc53f87e5da632dfd4d92025087596b727ac413))
+* dlhd cache ([9f082e0](https://github.com/qwertyuiop8899/streamvix/commit/9f082e0d4ba30823c8fa8ce030439052c98be9a8))
+* gd ([71bb870](https://github.com/qwertyuiop8899/streamvix/commit/71bb8706a29a93b4452d1ae11ac16e6bd889bb82))
+
+## [1.9.15](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.14...v1.9.15) (2025-10-22)
+
+
+### Bug Fixes
+
+* addtv ([bc67b08](https://github.com/qwertyuiop8899/streamvix/commit/bc67b08193b81f69c2bede161ad8f67a5a92e0b2))
+* bump version ([25283d4](https://github.com/qwertyuiop8899/streamvix/commit/25283d4734e9a235a289a63f5da289da942242f2))
+
+## [1.9.14](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.13...v1.9.14) (2025-10-21)
+
+
+### Bug Fixes
+
+* spon ([80a02ab](https://github.com/qwertyuiop8899/streamvix/commit/80a02abb501adcd1b4eb21da3eabc70d9ebc845d))
+
+## [1.9.13](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.12...v1.9.13) (2025-10-20)
+
+
+### Bug Fixes
+
+* es override ([bf24cca](https://github.com/qwertyuiop8899/streamvix/commit/bf24ccae8572d56de29b71264c02d11f394c3ad5))
+
+## [1.9.12](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.11...v1.9.12) (2025-10-19)
+
+
+### Bug Fixes
+
+* b oh ([ed2d34f](https://github.com/qwertyuiop8899/streamvix/commit/ed2d34f8cc6396ba84c551a3d3bb538ee6e47a17))
+
+## [1.9.11](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.10...v1.9.11) (2025-10-19)
+
+
+### Bug Fixes
+
+* eu ([8ad0d8e](https://github.com/qwertyuiop8899/streamvix/commit/8ad0d8e1e3aeb4d1ed35cd41db98674202acc9e2))
+* improvement ([667a17b](https://github.com/qwertyuiop8899/streamvix/commit/667a17bc924cbbb299fde8959a1dfdb95e3f83ee))
+
+## [1.9.10](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.9...v1.9.10) (2025-10-16)
+
+
+### Bug Fixes
+
+* key ([1b60b1e](https://github.com/qwertyuiop8899/streamvix/commit/1b60b1eea1b70b57c409b893c1b727d1df55a5e1))
+
+## [1.9.9](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.8...v1.9.9) (2025-10-16)
+
+
+### Bug Fixes
+
+* add undici ([e4ee47e](https://github.com/qwertyuiop8899/streamvix/commit/e4ee47e90753d3765bdcfec35c91d10d0c1b46b7))
+* proxy ([e17622b](https://github.com/qwertyuiop8899/streamvix/commit/e17622bc6d733c6d325691606d0d4a56b347ecab))
+
+## [1.9.8](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.7...v1.9.8) (2025-10-16)
+
+
+### Bug Fixes
+
+* bump version ([bccfdba](https://github.com/qwertyuiop8899/streamvix/commit/bccfdbaf1eef89b0dadfdd19c2e67342c0eaf072))
+* bump version ([8cae494](https://github.com/qwertyuiop8899/streamvix/commit/8cae4944385d321fdb9baa65c1e6b3e91b8a02e5))
+
+## [1.9.7](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.6...v1.9.7) (2025-10-16)
+
+
+### Bug Fixes
+
+* dlhd ([535e0ee](https://github.com/qwertyuiop8899/streamvix/commit/535e0eec1146f6aaf6bada76a8c1558e8ea9039e))
+* dlhd ([d216fa0](https://github.com/qwertyuiop8899/streamvix/commit/d216fa01d1cfea41d64e87b885d49a2779b8de5f))
+
+## [1.9.6](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.5...v1.9.6) (2025-10-16)
+
+
+### Bug Fixes
+
+* domains update ([9215276](https://github.com/qwertyuiop8899/streamvix/commit/921527680fd30ee1d7b73b1594c3faa97a676b5b))
+* proxies ([c4219a2](https://github.com/qwertyuiop8899/streamvix/commit/c4219a2f1370b28186d5225589d8e959de07e21f))
+
+## [1.9.5](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.4...v1.9.5) (2025-10-15)
+
+
+### Bug Fixes
+
+* fallback dlhd url ([2e7f948](https://github.com/qwertyuiop8899/streamvix/commit/2e7f948bae248841b93a55ecdf8df8ebb85609ec))
+* mediaset ([d6781ef](https://github.com/qwertyuiop8899/streamvix/commit/d6781ef7e89c07081fecb0c8077edd217e9c3e0d))
+
+## [1.9.4](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.3...v1.9.4) (2025-10-15)
+
+
+### Bug Fixes
+
+* filevamento url ([32dc59c](https://github.com/qwertyuiop8899/streamvix/commit/32dc59c730f5574f011aea57d5f9e58b91e954e8))
+* rilevamento url ([6c0a054](https://github.com/qwertyuiop8899/streamvix/commit/6c0a054732cd5ed83d7a66383466fe9afecfc9e5))
+
+## [1.9.3](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.2...v1.9.3) (2025-10-15)
+
+
+### Bug Fixes
+
+* category mediaset ([f7f1cb5](https://github.com/qwertyuiop8899/streamvix/commit/f7f1cb59d3c3f0d87a39a73d430d0d68df036f81))
+* mediaset ([6f6317a](https://github.com/qwertyuiop8899/streamvix/commit/6f6317a6c614ae3dc5298c31d675fb731dc33ab4))
+
+## [1.9.2](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.1...v1.9.2) (2025-10-15)
+
+
+### Bug Fixes
+
+* domains update ([cd1bafa](https://github.com/qwertyuiop8899/streamvix/commit/cd1bafac4521d29daf2355d509edc43ef87d4dc7))
+
+## [1.9.1](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.0...v1.9.1) (2025-10-14)
+
+
+### Bug Fixes
+
+* au ([918fc9a](https://github.com/qwertyuiop8899/streamvix/commit/918fc9a4c437f85a17d673a951aa50c5f506da95))
+* au ita ([1731963](https://github.com/qwertyuiop8899/streamvix/commit/1731963c29ee0b5a82bbb298698a7838ae025670))
+
+## [1.9.0](https://github.com/qwertyuiop8899/streamvix/compare/v1.8.6...v1.9.0) (2025-10-14)
+
+
+### Features
+
+* **normalize-au:** add "Ranma ½ (2024) Season 2" ([d72e562](https://github.com/qwertyuiop8899/streamvix/commit/d72e5622ddb7e5e4c20de44dcac22e0a79680bda))
+* **normalize-aw:** add "Ranma ½ (2024) Season 2" ([11e4b89](https://github.com/qwertyuiop8899/streamvix/commit/11e4b89da2cb2ae959c4e165eb63c2e7f7d68d90))
+* **normalize:** add "Ranma ½ (2024) Season 2" ([fad9ce7](https://github.com/qwertyuiop8899/streamvix/commit/fad9ce7e36a1a84a30a07e792fb78b9af8e6fed8))
+
+## [1.8.6](https://github.com/qwertyuiop8899/streamvix/compare/v1.8.5...v1.8.6) (2025-10-14)
+
+
+### Bug Fixes
+
+* aot and exact match ([3ca16f2](https://github.com/qwertyuiop8899/streamvix/commit/3ca16f20d441bec126e6ff6f0b2398ecbaee1823))
+
+## [1.8.5](https://github.com/qwertyuiop8899/streamvix/compare/v1.8.4...v1.8.5) (2025-10-14)
+
+
+### Bug Fixes
+
+* aot season4 ([f185c5f](https://github.com/qwertyuiop8899/streamvix/commit/f185c5f20df15ffa81529cd81d3a99cb638a8ee5))
+
+## [1.8.4](https://github.com/qwertyuiop8899/streamvix/compare/v1.8.3...v1.8.4) (2025-10-13)
+
+
+### Bug Fixes
+
+* add das ([bea0ef0](https://github.com/qwertyuiop8899/streamvix/commit/bea0ef0cd063c8c64af17434a277bff33ed81025))
+
+## [1.8.3](https://github.com/qwertyuiop8899/streamvix/compare/v1.8.2...v1.8.3) (2025-10-12)
+
+
+### Bug Fixes
+
+* disable livetv ([d80d8ff](https://github.com/qwertyuiop8899/streamvix/commit/d80d8ffc642703a26d972543ca467b2cd9049010))
+* disable livetv ([6b4e992](https://github.com/qwertyuiop8899/streamvix/commit/6b4e99203d8ed52fca189c274c8ae2fcd3c3ca78))
+* monster static map ([cde51bb](https://github.com/qwertyuiop8899/streamvix/commit/cde51bb8f665b02088f8f3c01fd517232567260d))
+* staticmap imdb to tmdb ([824cf53](https://github.com/qwertyuiop8899/streamvix/commit/824cf5321d290a8b056ac05ab45a2a1e8b69e5d0))
+
+## [1.8.2](https://github.com/qwertyuiop8899/streamvix/compare/v1.8.1...v1.8.2) (2025-10-12)
+
+
+### Bug Fixes
+
+* f1 ([3cb4667](https://github.com/qwertyuiop8899/streamvix/commit/3cb4667b5deea063cc9076c8062c9882e6f54978))
+* freeshot pd and f1 ([de65b28](https://github.com/qwertyuiop8899/streamvix/commit/de65b283e7ac9dc0a0fb89049495fde80d883f3b))
+* pd ([28e815c](https://github.com/qwertyuiop8899/streamvix/commit/28e815cc258d3f66d5eeca1f03806c8a410bf6b5))
+
+## [1.8.1](https://github.com/qwertyuiop8899/streamvix/compare/v1.8.0...v1.8.1) (2025-10-10)
+
+
+### Bug Fixes
+
+* add-on refactoring ([896d909](https://github.com/qwertyuiop8899/streamvix/commit/896d909d91d3fdfafecc79084cea310338edc846))
+* domains update ([667155d](https://github.com/qwertyuiop8899/streamvix/commit/667155db7903949f00fe3b62319b3a9a5e4fc4b8))
+* spon extract ([dc5ee51](https://github.com/qwertyuiop8899/streamvix/commit/dc5ee51904cef19fd6d5e2e2fc311dfc14cabd2a))
+* spon mfp ([b38f3eb](https://github.com/qwertyuiop8899/streamvix/commit/b38f3eba0672749d351a8ea36d0282c4328b267a))
+
+## [1.8.0](https://github.com/qwertyuiop8899/streamvix/compare/v1.7.11...v1.8.0) (2025-10-08)
+
+
+### Features
+
+* **normalize-au:** add "Cat's♥Eye" ([a4d72c9](https://github.com/qwertyuiop8899/streamvix/commit/a4d72c9b2b6c56852cb09bf57739e90ea24c2413))
+* **normalize-aw:** add "Cat's Eye (2025)" ([2f2c05d](https://github.com/qwertyuiop8899/streamvix/commit/2f2c05d809af38dd533c493865f4cb4a8453592d))
+* **normalize-aw:** add "Cat's♥Eye" ([47ab2e8](https://github.com/qwertyuiop8899/streamvix/commit/47ab2e895600dd2938aed5c965263fd55acb9639))
+* **normalize:** add "Cat's Eye (2025)" ([846e585](https://github.com/qwertyuiop8899/streamvix/commit/846e58536e5b31d784dfa1416d8f0c59abb29abe))
+* **normalize:** add "Cat's♥Eye" ([55abf9e](https://github.com/qwertyuiop8899/streamvix/commit/55abf9eff1eb92fac9d30688d8bbb57f456119a2))
+
+## [1.7.11](https://github.com/qwertyuiop8899/streamvix/compare/v1.7.10...v1.7.11) (2025-10-07)
+
+
+### Bug Fixes
+
+* onepunch ([09c8e75](https://github.com/qwertyuiop8899/streamvix/commit/09c8e75ff7b6d24f912511c19f735012e5931f5f))
+
+## [1.7.10](https://github.com/qwertyuiop8899/streamvix/compare/v1.7.9...v1.7.10) (2025-10-07)
+
+
+### Bug Fixes
+
+* gd ([003b94d](https://github.com/qwertyuiop8899/streamvix/commit/003b94d44e71ec366792bb584b334e84ceb98c23))
+* gd mfp e non ([800c24c](https://github.com/qwertyuiop8899/streamvix/commit/800c24c7f734bdc1f55c71240704e95b90843363))
+
+## [1.7.9](https://github.com/qwertyuiop8899/streamvix/compare/v1.7.8...v1.7.9) (2025-10-07)
+
+
+### Bug Fixes
+
+* ko-fi ([0120e90](https://github.com/qwertyuiop8899/streamvix/commit/0120e90c9d31bad772624481e4dd1af8d5682b80))
+
+## [1.7.8](https://github.com/qwertyuiop8899/streamvix/compare/v1.7.7...v1.7.8) (2025-10-07)
+
+
+### Bug Fixes
+
+* addon aun fhd ([6f6f564](https://github.com/qwertyuiop8899/streamvix/commit/6f6f564b8a11973d7190d6d959a0ccdbbe5ac3c7))
+* au fhd ([984e001](https://github.com/qwertyuiop8899/streamvix/commit/984e0011a37117d0a60d4ca821197b77d270bc2d))
+* au name ([95a55d6](https://github.com/qwertyuiop8899/streamvix/commit/95a55d6cb3eb8ae1c82d46c6810de25d4d7d2ca3))
+* au type ([8bc37e1](https://github.com/qwertyuiop8899/streamvix/commit/8bc37e16465a41118707653e26594c2cbf74c887))
+* bump version ([7fd73ce](https://github.com/qwertyuiop8899/streamvix/commit/7fd73ce003e6c6518e5d01b7889900fa79894925))
+* ch name ([c2afb99](https://github.com/qwertyuiop8899/streamvix/commit/c2afb99a3472bb9b84e729de1bf9760dc89aaf00))
+* fix onepunch and animeunity hls ([31426d9](https://github.com/qwertyuiop8899/streamvix/commit/31426d9aa5487e167fcb4cafc4c88bb73ef5aeb2))
+* landing aniuni now without mfp ([77fc7ba](https://github.com/qwertyuiop8899/streamvix/commit/77fc7baae7d4089f21104b154e51d7984fc1bacc))
+
+## [1.7.7](https://github.com/qwertyuiop8899/streamvix/compare/v1.7.6...v1.7.7) (2025-10-06)
+
+
+### Bug Fixes
+
+* add cf ([8736981](https://github.com/qwertyuiop8899/streamvix/commit/87369810a04db0dbd2094d7d1b661d4f2f81cb69))
+
+## [1.7.6](https://github.com/qwertyuiop8899/streamvix/compare/v1.7.5...v1.7.6) (2025-10-06)
+
+
+### Bug Fixes
+
+* add gdplayer for daddy - fix basket lega a - fix pd link ([e58ea3c](https://github.com/qwertyuiop8899/streamvix/commit/e58ea3c9d8cc1d16c0a7d87ad6893e86476dfead))
+
+## [1.7.5](https://github.com/qwertyuiop8899/streamvix/compare/v1.7.4...v1.7.5) (2025-10-05)
+
+
+### Bug Fixes
+
+* vix language ([944a7bd](https://github.com/qwertyuiop8899/streamvix/commit/944a7bd0d3cce6a87b60a879087eaf425e89da66))
+
+## [1.7.4](https://github.com/qwertyuiop8899/streamvix/compare/v1.7.3...v1.7.4) (2025-10-04)
+
+
+### Bug Fixes
+
+* es with tmdb ([171ab18](https://github.com/qwertyuiop8899/streamvix/commit/171ab18f2844fcf7713443fcf20f004b163d58ed))
+* fix vix ([3394b98](https://github.com/qwertyuiop8899/streamvix/commit/3394b98eacc224858cb6564f2712899c574c340a))
+* gs ([73f137b](https://github.com/qwertyuiop8899/streamvix/commit/73f137be78f0a55eb0fa025777f861772437e025))
+* vv nomfp ([141cdf8](https://github.com/qwertyuiop8899/streamvix/commit/141cdf8b93005dbcb38cd94014e3a7488fbcbb2c))
+
+## [1.7.3](https://github.com/qwertyuiop8899/streamvix/compare/v1.7.2...v1.7.3) (2025-10-04)
+
+
+### Bug Fixes
+
+* spon free ([f2711c5](https://github.com/qwertyuiop8899/streamvix/commit/f2711c509c7f4a6d1581157e695f7653156c9773))
+* spon free ([f2711c5](https://github.com/qwertyuiop8899/streamvix/commit/f2711c509c7f4a6d1581157e695f7653156c9773))
+
+## [1.7.2](https://github.com/qwertyuiop8899/streamvix/compare/v1.7.1...v1.7.2) (2025-10-03)
+
+
+### Bug Fixes
+
+* landing ([2a6c50b](https://github.com/qwertyuiop8899/streamvix/commit/2a6c50b6cd4bbd8588969aaaa1401d97a190f559))
+
+## [1.7.1](https://github.com/qwertyuiop8899/streamvix/compare/v1.7.0...v1.7.1) (2025-10-03)
+
+
+### Bug Fixes
+
+* rel version ([b5240ce](https://github.com/qwertyuiop8899/streamvix/commit/b5240cedc0c4e060636d7602ce75a9113b51dd87))
+
+## [1.7.0](https://github.com/qwertyuiop8899/streamvix/compare/v1.6.12...v1.7.0) (2025-10-03)
+
+
+### Features
+
+* **normalize-au:** add "Attack on Titan OAD" ([7cfaf17](https://github.com/qwertyuiop8899/streamvix/commit/7cfaf178572b25c948e97741f4b40ba455cfc845))
+
+
+### Bug Fixes
+
+* aot ([1884eb1](https://github.com/qwertyuiop8899/streamvix/commit/1884eb1e12c256d64bc1341d758c3a52eb0353e7))
+* nomfp live ([a125dcc](https://github.com/qwertyuiop8899/streamvix/commit/a125dccd721639d30c2bb4a4e2a1802730483b85))
+
+## [1.6.12](https://github.com/qwertyuiop8899/streamvix/compare/v1.6.11...v1.6.12) (2025-10-03)
+
+
+### Bug Fixes
+
+* add fhdname ([e13f041](https://github.com/qwertyuiop8899/streamvix/commit/e13f0413025a6fe4f5cc2666fe28138b47f6d8bf))
+
+## [1.6.11](https://github.com/qwertyuiop8899/streamvix/compare/v1.6.10...v1.6.11) (2025-10-02)
+
+
+### Bug Fixes
+
+* add dd nomfp ([86f3e58](https://github.com/qwertyuiop8899/streamvix/commit/86f3e5852c6d0c617508d3e59498a93334e63547))
+* bump version ([f04526f](https://github.com/qwertyuiop8899/streamvix/commit/f04526f1b9ab878de3c85c7b132a439f03aca839))
+
 ## [1.6.10](https://github.com/qwertyuiop8899/streamvix/compare/v1.6.9...v1.6.10) (2025-10-01)
 
 

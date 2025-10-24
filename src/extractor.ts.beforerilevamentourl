@@ -989,51 +989,7 @@ export async function getStreamContent(id: string, type: ContentType, config: Ex
   streams.sort((a,b)=> a.source === b.source ? 0 : (a.source==='direct'? -1:1));
 
   // Synthetic helpers (solo se addonBase valido e scenario richiede)
-  // Costruzione usableAddonBase con rilevamento automatico prioritario (come DLHD)
-  let usableAddonBase = '';
-  
-  // Tentativo 1: Rilevamento automatico dalla richiesta corrente (PRIORITÀ MASSIMA)
-  try {
-    const lastReq: any = (global as any).lastExpressRequest;
-    if (lastReq) {
-      const protocol = lastReq.protocol || 'https';
-      const host = lastReq.get('host') || lastReq.headers?.host || '';
-      if (host && !host.includes(domains.vixsrc)) {
-        usableAddonBase = `${protocol}://${host}`;
-        console.log(`[VixSrc] addonBase rilevato automaticamente: ${usableAddonBase}`);
-      } else if (host && host.includes(domains.vixsrc)) {
-        console.log(`[VixSrc] Host rilevato è dominio VixSrc stesso (${host}), skip per evitare loop`);
-      }
-    }
-  } catch (e) {
-    console.log(`[VixSrc] Errore rilevamento automatico addonBase:`, e);
-  }
-  
-  // Fallback 2: Variabile ambiente ADDON_BASE_URL
-  if (!usableAddonBase) {
-    const envBase = (process && process.env && process.env.ADDON_BASE_URL) ? String(process.env.ADDON_BASE_URL).trim() : '';
-    if (envBase && !envBase.includes(domains.vixsrc)) {
-      usableAddonBase = envBase;
-      console.log(`[VixSrc] addonBase da variabile ambiente: ${usableAddonBase}`);
-    } else if (envBase && envBase.includes(domains.vixsrc)) {
-      console.log(`[VixSrc] ADDON_BASE_URL è dominio VixSrc stesso, skip per evitare loop`);
-    }
-  }
-  
-  // Fallback 3: config.addonBase (runtime / landing page)
-  if (!usableAddonBase) {
-    if (config.addonBase && !config.addonBase.includes(domains.vixsrc)) {
-      usableAddonBase = config.addonBase;
-      console.log(`[VixSrc] addonBase da config runtime: ${usableAddonBase}`);
-    } else if (config.addonBase && config.addonBase.includes(domains.vixsrc)) {
-      console.log(`[VixSrc] config.addonBase è dominio VixSrc stesso, skip per evitare loop`);
-    }
-  }
-  
-  if (!usableAddonBase) {
-    console.log(`[VixSrc] Nessun usableAddonBase disponibile: synthetic FHD disabilitato`);
-  }
-  
+  const usableAddonBase = (config.addonBase && !config.addonBase.includes(domains.vixsrc)) ? config.addonBase : '';
   const haveMfp = !!(config.mfpUrl && config.mfpPsw && streams.some(s=>s.source==='proxy'));
   const haveDirect = streams.some(s=>s.source==='direct');
 
