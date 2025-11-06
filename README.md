@@ -26,10 +26,10 @@ Istanza ElfHosted a pagamento CON Mediaflo Proxy incluso (Per Eventi Sportivi)
 * **🌐 Proxy Unificato:** Un solo proxy MFP per tutti i contenuti (film, serie, anime, TV, eventi sportivi).
 * **⚽ Eventi Sportivi Avanzati:** 
   - **SPON (Schedule-based):** Matching automatico eventi sportivi con canali Sportzonline (wrap MFP diretto + fallback estrattore TypeScript)
-  - **SPSO:** Integrazione playlist SportSOnline con varianti `[SPSO]`
-  - **RB77:** Flussi italiani certificati con simboli dinamici (🚫/�)
-  - **Streamed:** Arricchimento playlist con matching fuzzy e finestre temporali
-  - **P🐽D (Pig):** Stream prioritari broadcaster (SKY, DAZN, Eurosport)
+  - **SPSO:** Integrazione playlist SportSOnline con varianti `[SPSO]` OFF
+  - **RB77:** Flussi italiani certificati con simboli dinamici (🚫/�) OFF
+  - **Streamed:** Arricchimento playlist con matching fuzzy e finestre temporali OFF
+  - **P🐽D (Pig):** Stream prioritari broadcaster (SKY, DAZN, Eurosport) OFF
 * **🎯 Ottimizzazione Automatica:** MFP wrap diretto per massima velocità, estrattori TypeScript come fallback sicuro
 * **📡 Supporto Live TV:** Canali TV italiani e Eventi Sportivi visibili senza Mediaflow Proxy, scegliere i canali [Vavoo] o con 🏠.
 * **🔓 Supporto Stream Senza Mediaflow Proxy:** Canali TV italiani e Eventi Sportivi, Film e Serie TV, scegliere gli stream con 🔓 per avviarli senza aver bisogno di un MediaflowProxy. (Nota Bene, per avviare gli stream senza proxy ci potrebbe essere bisogno di un player esterno o VLC, prova con il player di default, se non va usa un player esterno tipo VLC)
@@ -53,6 +53,12 @@ http://urladdon/streamed/reload   avvia arricchimento Streamed
 http://urladdon/rbtv/reload       avvia arricchimento RB77/RBTV
 
 http://urladdon/spso/reload       avvia arricchimento SPSO
+
+http://urladdon/amstaff/reload       avvia arricchimento MPD
+
+http://urladdon/rm/reload       avvia arricchimento MPD2
+
+http://urladdon/tn/reload       avvia arricchimento TN
 
 
 ## 🔧 Configurazione Semplificata
@@ -248,6 +254,7 @@ Se vuoi modificare solo la finestra di visibilità estesa fino a una certa ora, 
 | `RBTV_DISCOVERY_AFTER_MIN` | 10 | Minuti dopo start per discovery RB77 |
 | `STREAMED_ENABLE` | 0 | 1 = abilita integrazione Streamed |
 | `SPSO_PLAYLIST_URL` | auto | URL playlist SPSO custom |
+| `STATIC_DADDY_LAZY` | 1 | **Estrazione DaddyHD canali statici**: 1 (default) = lazy/veloce (link diretto, non estratto, estrazione al play), 0 = eager/lento (estrazione preventiva prima di mostrare lista) |
 
 ---
 ## 🐽 Integrazione Provider [P🐽D]
@@ -938,6 +945,10 @@ Thanks to https://github.com/ThEditor https://github.com/ThEditor/stremsrc for t
 Un ringraziamento speciale a @UrloMythus per gli extractor e per la logica kitsu
 
 Funzionalità dinamiche FAST / CAP / purge implementate nel 2025.
+
+
+
+
 
 
 
