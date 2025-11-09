@@ -51,9 +51,12 @@ interface AddonConfig {
     guardaserieEnabled?: boolean;
     guardahdEnabled?: boolean;
     eurostreamingEnabled?: boolean;
+    loonexEnabled?: boolean;
+    toonitaliaEnabled?: boolean;
     disableLiveTv?: boolean;
     disableVixsrc?: boolean;
     tvtapProxyEnabled?: boolean;
+    vavooNoMfpEnabled?: boolean;
 }
 
 function debugLog(...args: any[]) { try { console.log('[DEBUG]', ...args); } catch {} }
@@ -591,7 +594,7 @@ function isCfDlhdProxy(u: string): boolean { return extractDlhdIdFromCf(u) !== n
 // ================= MANIFEST BASE (restored) =================
 const baseManifest: Manifest = {
     id: "org.stremio.vixcloud",
-    version: "8.5.24",
+    version: "8.8.23",
     name: "StreamViX | Elfhosted",
     description: "StreamViX addon con VixSRC, Guardaserie, Altadefinizione, AnimeUnity, AnimeSaturn, AnimeWorld, Eurostreaming, TV ed Eventi Live",
     background: "https://raw.githubusercontent.com/qwertyuiop8899/StreamViX/refs/heads/main/public/backround.png",
@@ -653,16 +656,24 @@ const baseManifest: Manifest = {
         { key: "mediaFlowProxyPassword", title: "MediaFlow Proxy Password", type: "text" },
         // { key: "enableMpd", title: "Enable MPD Streams", type: "checkbox" },
     { key: "disableVixsrc", title: "Disable VixSrc", type: "checkbox" },
+    { key: "vixDirect", title: "VixSrc Direct mode", type: "checkbox" },
+    { key: "vixDirectFhd", title: "VixSrc Direct FHD mode", type: "checkbox" },
+    { key: "vixProxy", title: "VixSrc Proxy mode", type: "checkbox" },
+    { key: "vixProxyFhd", title: "VixSrc Proxy FHD mode", type: "checkbox" },
     { key: "disableLiveTv", title: "Live TV 📺 [Molti canali hanno bisogno di MFP]", type: "checkbox", default: false },
     { key: "animeunityEnabled", title: "Enable AnimeUnity", type: "checkbox" },
+    { key: "animeunityAuto", title: "AnimeUnity AUTO mode", type: "checkbox" },
+    { key: "animeunityFhd", title: "AnimeUnity FHD mode", type: "checkbox" },
     { key: "animesaturnEnabled", title: "Enable AnimeSaturn", type: "checkbox" },
     { key: "animeworldEnabled", title: "Enable AnimeWorld", type: "checkbox" },
     { key: "guardaserieEnabled", title: "Enable GuardaSerie", type: "checkbox" },
     { key: "guardahdEnabled", title: "Enable GuardaHD", type: "checkbox" },
     { key: "eurostreamingEnabled", title: "Eurostreaming", type: "checkbox" },
+    { key: "loonexEnabled", title: "Enable Loonex", type: "checkbox" },
+    { key: "toonitaliaEnabled", title: "Enable ToonItalia", type: "checkbox" },
     { key: "cb01Enabled", title: "Enable CB01 Mixdrop", type: "checkbox" },
     { key: "streamingwatchEnabled", title: "StreamingWatch 🔓", type: "checkbox" },
-    { key: "tvtapProxyEnabled", title: "TvTap NO MFP 🔓", type: "checkbox", default: true },
+    // { key: "tvtapProxyEnabled", title: "TvTap NO MFP 🔓", type: "checkbox", default: true }, // TVTAP RIMOSSO
     { key: "vavooNoMfpEnabled", title: "Vavoo NO MFP 🔓", type: "checkbox", default: true },
     // UI helper toggles (not used directly server-side but drive dynamic form logic)
     { key: "personalTmdbKey", title: "TMDB API KEY Personale", type: "checkbox" },
@@ -3979,7 +3990,7 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                     }
                     // Dopo aver popolato streams (nella logica TV):
                     for (const s of streams) {
-                        const allowVavooClean = true;
+                        const allowVavooClean = config.vavooNoMfpEnabled !== false; // default true se non specificato
                         const marker = '#headers#';
                         if (s.url.includes(marker)) {
                             const [pureUrl, b64] = s.url.split(marker);
@@ -4028,6 +4039,11 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                 const eurostreamingEnabled = eurostreamingEnv !== undefined
                     ? eurostreamingEnv
                     : (config.eurostreamingEnabled !== false); // default true
+                // Loonex: default OFF (nuovo provider)
+                const loonexEnabled = envFlag('LOONEX_ENABLED') ?? (config.loonexEnabled === true);
+                // ToonItalia: default OFF (nuovo provider)
+                const toonitaliaEnabled = envFlag('TOONITALIA_ENABLED') ?? (config.toonitaliaEnabled === true);
+                console.log(`[ToonItalia] Flag status: ${toonitaliaEnabled} (env: ${envFlag('TOONITALIA_ENABLED')}, config: ${config.toonitaliaEnabled})`);
                 // Nuovo flag per inserire VixSrc nell'esecuzione parallela (prima era fuori e poteva saltare)
                 const vixsrcEnabled = (() => {
                     try {
@@ -4038,8 +4054,8 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                 })();
                 let vixsrcScheduled = false; // per evitare doppia esecuzione nel blocco sequenziale più sotto
 
-                // Gestione parallela AnimeUnity / AnimeSaturn / AnimeWorld
-                if ((id.startsWith('kitsu:') || id.startsWith('mal:') || id.startsWith('tt') || id.startsWith('tmdb:')) && (animeUnityEnabled || animeSaturnEnabled || animeWorldEnabled || guardaSerieEnabled || guardaHdEnabled || eurostreamingEnabled || vixsrcEnabled)) {
+                // Gestione parallela AnimeUnity / AnimeSaturn / AnimeWorld + Loonex
+                if ((id.startsWith('kitsu:') || id.startsWith('mal:') || id.startsWith('tt') || id.startsWith('tmdb:')) && (animeUnityEnabled || animeSaturnEnabled || animeWorldEnabled || guardaSerieEnabled || guardaHdEnabled || eurostreamingEnabled || loonexEnabled || vixsrcEnabled)) {
                     const animeUnityConfig: AnimeUnityConfig = {
                         enabled: animeUnityEnabled,
                         mfpUrl: config.mediaFlowProxyUrl || process.env.MFP_URL || '',
@@ -4092,6 +4108,8 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                         if (l.includes('cb01')) return 'cb01';
                         if (l.includes('streamingwatch')) return 'streamingwatch';
                         if (l.includes('eurostreaming')) return 'eurostreaming';
+                        if (l.includes('loonex')) return 'loonex';
+                        if (l.includes('toonitalia')) return 'toonitalia';
                         return 'generic';
                     };
                     const unifyStreams = (original: Stream[], providerLabelName: string): Stream[] => {
@@ -4277,6 +4295,12 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                                         break;
                                     case 'guardaserie':
                                         bingeGroup = 'guardaserie-std';
+                                        break;
+                                    case 'loonex':
+                                        bingeGroup = 'loonex-std';
+                                        break;
+                                    case 'toonitalia':
+                                        bingeGroup = 'toonitalia-std';
                                         break;
                                     default:
                                         bingeGroup = `${providerKey}-std`;
@@ -4464,6 +4488,54 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                         }, providerLabel('eurostreaming'), true));
                     }
 
+                    // Loonex (serie TV)
+                    if (loonexEnabled && type === 'series' && seasonNumber != null && episodeNumber != null && (id.startsWith('tt') || id.startsWith('tmdb:'))) {
+                        providerPromises.push(runProvider('Loonex', true, async () => {
+                            const { getLoonexStreams } = await import('./providers/loonex-provider');
+                            // Extract IDs from the request
+                            const tmdbId = id.startsWith('tmdb:') ? id.replace('tmdb:', '').split(':')[0] : undefined;
+                            const imdbId = id.startsWith('tt') ? id.split(':')[0] : '';
+                            console.log(`[DEBUG-LOONEX] Calling getLoonexStreams: type=${type}, imdbId=${imdbId}, tmdbId=${tmdbId}, S${seasonNumber}E${episodeNumber}`);
+                            // Non passiamo il titolo, lo recupererà da TMDb
+                            const streams = await getLoonexStreams(type, imdbId, undefined, seasonNumber, episodeNumber, tmdbId);
+                            return { streams };
+                        }, providerLabel('loonex')));
+                    }
+
+                    // ToonItalia (serie TV/Anime) - Ricerca dinamica via TMDb
+                    if (toonitaliaEnabled && type === 'series' && seasonNumber != null && episodeNumber != null) {
+                        providerPromises.push(runProvider('ToonItalia', true, async () => {
+                            const { toonitalia } = await import('./providers/toonitalia-provider');
+                            
+                            // Costruisci ID nel formato appropriato
+                            let requestId: string;
+                            if (id.startsWith('tt')) {
+                                // IMDb ID: "tt1234567:season:episode"
+                                requestId = `${id.split(':')[0]}:${seasonNumber}:${episodeNumber}`;
+                            } else if (id.startsWith('tmdb:')) {
+                                // TMDb ID: "tmdb:12345:season:episode"
+                                const tmdbId = id.replace('tmdb:', '').split(':')[0];
+                                requestId = `tmdb:${tmdbId}:${seasonNumber}:${episodeNumber}`;
+                            } else {
+                                // Fallback (shouldn't happen)
+                                console.log('[ToonItalia] Unknown ID format:', id);
+                                return { streams: [] };
+                            }
+                            
+                            console.log(`[ToonItalia] Calling provider with: ${requestId}`);
+                            const streams = await toonitalia({
+                                id: requestId,
+                                type: type as 'movie' | 'series',
+                                config: {
+                                    mfpUrl: mfpUrl || '',
+                                    mfpPsw: mfpPsw || '',
+                                    tmdbApiKey: config.tmdbApiKey || process.env.TMDB_API_KEY || '40a9faa1f6741afb2c0c40238d85f8d0'
+                                }
+                            });
+                            return { streams };
+                        }, 'ToonItalia'));
+                    }
+
 
                     await Promise.all(providerPromises);
 
@@ -4486,6 +4558,18 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                         else console.log('[AnimeUnity][LabelPass] Nessun stream FHD marcato (controllare estrazione variante)');
                     } catch (e) {
                         console.warn('[AnimeUnity][LabelPass] errore post-process badge FHD:', (e as any)?.message || e);
+                    }
+
+                    // Post-process ToonItalia streams to apply unified label
+                    try {
+                        for (const s of allStreams) {
+                            const lowerName = (s.name || s.title || '').toLowerCase();
+                            if (lowerName.includes('toonitalia')) {
+                                s.name = mapLegacyProviderName(s.name || 'ToonItalia');
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('[ToonItalia][LabelPass] errore post-process label:', (e as any)?.message || e);
                     }
                 }
 
@@ -5146,7 +5230,10 @@ app.get('/tn/reload', async (_: Request, res: Response) => {
         
         // Ricarica i canali dinamici per ottenere il conteggio aggiornato
         const dyn = loadDynamicChannels(true);
-        const thisnotCount = dyn.filter((c: any) => c.category === 'THISNOT').length;
+        const thisnotCount = dyn.filter((c: any) => {
+            const cat = (c.category || '').toString().toLowerCase();
+            return cat === 'thisnot';
+        }).length;
         
         console.log(`✅ [ThisNot] Reload completato: ${thisnotCount} canali ThisNot attivi`);
         

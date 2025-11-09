@@ -10,9 +10,9 @@ import axios from 'axios';
 
 // URL base64-encoded dei 3 file M3U (come amstaff pattern)
 const RM_SOURCES = [
-    'aHR0cHM6Ly9jb3JzcHJveHkuaW8vP2h0dHBzJTNBJTJGJTJGeHJvbS1pdGFsLXRnLndvcmslMkZEQUxMQVMlMkZMQUtFUlMlMkZYUk9NJTJGSlMtUExBWUVSLUxJU1QlMkZFUEctTElTVC1NM1UlMkZ4cm9tdHYtaXRhbGlhLWNpbmVtYS5qc29u',
-    'aHR0cHM6Ly9jb3JzcHJveHkuaW8vP2h0dHBzJTNBJTJGJTJGeHJvbS1pdGFsLXRnLndvcmslMkZEQUxMQVMlMkZMQUtFUlMlMkZYUk9NJTJGSlMtUExBWUVSLUxJU1QlMkZFUEctTElTVC1NM1UlMkZ4cm9tdHYtaXRhbGlhLXNwb3J0cy5qc29u',
-    'aHR0cHM6Ly9jb3JzcHJveHkuaW8vP2h0dHBzJTNBJTJGJTJGeHJvbS1pdGFsLXRnLndvcmslMkZEQUxMQVMlMkZMQUtFUlMlMkZYUk9NJTJGSlMtUExBWUVSLUxJU1QlMkZFUEctTElTVC1NM1UlMkZ4cm9tdHYtaXRhbGlhLWludHJhdHRlbmltZW50by5qc29u'
+    'aHR0cHM6Ly94cm9tLWl0YWwtdGcud29yay9EQUxMQVMvTEFLRVJTL1hST00vSlMtUExBWUVSLUxJU1QvRVBHLUxJU1QtTTNVL3hyb210di1pdGFsaWEtY2luZW1hLTQ0NzcuanNvbg==',
+    'aHR0cHM6Ly94cm9tLWl0YWwtdGcud29yay9EQUxMQVMvTEFLRVJTL1hST00vSlMtUExBWUVSLUxJU1QvRVBHLUxJU1QtTTNVL3hyb210di1pdGFsaWEtc3BvcnRzLTQ0NzcuanNvbg==',
+    'aHR0cHM6Ly94cm9tLWl0YWwtdGcud29yay9EQUxMQVMvTEFLRVJTL1hST00vSlMtUExBWUVSLUxJU1QvRVBHLUxJU1QtTTNVL3hyb210di1pdGFsaWEtaW50cmF0dGVuaW1lbnRvLTQ0NzcuanNvbg=='
 ];
 
 // Mapping tvg-id → vavooName per canali con nomi diversi
@@ -22,7 +22,8 @@ const TVG_ID_MAPPING: Record<string, string> = {
     'Sky.Sport.Golf.it': 'SKY SPORT GOLF',  // TODO: aggiungere in tv_channels se non presente
     'sky.tg24.it': 'SKY TG24',  // RM ha "SKY TG 24" (con spazio), vavooName è "SKY TG24" (senza)
     'history.it': 'HISTORY CHANNEL',
-    'MTV.HD.it': 'MTV'
+    'MTV.HD.it': 'MTV',
+    'Sky.Serie.Maratone.it': 'SKY COLLECTION'  // Sky Collection = Sky Serie Maratone
 };
 
 interface RmChannel {

@@ -27,7 +27,8 @@ const CHANNEL_NAME_MAPPING: Record<string, string> = {
     "SKY CALCIO 257": "SKY SPORT 257",
     "SKY CALCIO 258": "SKY SPORT 258",
     "SKY CALCIO 259": "SKY SPORT 259",
-    "SKY HISTORY": "HISTORY CHANNEL"
+    "SKY HISTORY": "HISTORY CHANNEL",
+    "SKY COLLECTION": "SKY COLLECTION"
 };
 
 interface AmstaffChannel {
@@ -119,8 +120,8 @@ function extractChannelsFromJson(data: any): AmstaffChannel[] {
         if (typeof obj === 'object' && obj !== null) {
             if ('title' in obj && 'myresolve' in obj) {
                 let title = obj.title;
-                // Pulisce tag COLOR
-                title = title.replace(/\[COLOR lime\]/g, '').replace(/\[\/COLOR\]/g, '').trim();
+                // Pulisce TUTTI i tag COLOR (cyan, lime, red, ecc.)
+                title = title.replace(/\[COLOR [^\]]+\]/gi, '').replace(/\[\/COLOR\]/gi, '').trim();
                 
                 const myresolve = obj.myresolve;
                 if (myresolve && myresolve.startsWith('amstaff@@')) {

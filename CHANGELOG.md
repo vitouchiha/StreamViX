@@ -1,5 +1,67 @@
 # Changelog
 
+## [1.10.3](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.2...v1.10.3) (2025-11-08)
+
+
+### Bug Fixes
+
+* amstf ([202dca7](https://github.com/qwertyuiop8899/streamvix/commit/202dca754c1f034902a45f4620914657d999c87a))
+
+## [1.10.2](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.1...v1.10.2) (2025-11-08)
+
+
+### Bug Fixes
+
+* landing issues ([786a1ff](https://github.com/qwertyuiop8899/streamvix/commit/786a1ff3b0ed0f33b114eaa5e9567e7f39160f09))
+* tas ([867d176](https://github.com/qwertyuiop8899/streamvix/commit/867d1766068b2208c7a2759068eff9e1679d3c60))
+* toon ([7ab4a74](https://github.com/qwertyuiop8899/streamvix/commit/7ab4a742b06f5d4a27e561e32432c44a9b5386b0))
+* vavoo clean ([a18374f](https://github.com/qwertyuiop8899/streamvix/commit/a18374fe778021267bf2e84b67226bf1d74fa9e8))
+
+## [1.10.1](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.0...v1.10.1) (2025-11-08)
+
+
+### Bug Fixes
+
+* add toonitalia ([6a40fb7](https://github.com/qwertyuiop8899/streamvix/commit/6a40fb78b4cae260023d6424520115661b729128))
+* bump version ([da0c258](https://github.com/qwertyuiop8899/streamvix/commit/da0c258957192778b6078e61d2a7283e7ae81749))
+
+## [1.10.0](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.38...v1.10.0) (2025-11-08)
+
+
+### Features
+
+* **normalize-au:** add "Link Click Season 2" ([ed060b0](https://github.com/qwertyuiop8899/streamvix/commit/ed060b0591bbd303ccbca9101527374c5d824712))
+* **normalize-aw:** add "Link Click Season 2" ([4e41fac](https://github.com/qwertyuiop8899/streamvix/commit/4e41fac415014098ce2ecba24ed5683b32af2153))
+* **normalize:** add "Link Click Season 2" ([00f963c](https://github.com/qwertyuiop8899/streamvix/commit/00f963c66aa4bf0f24d608374394b71b782635c9))
+
+
+### Bug Fixes
+
+* domains update ([41347dc](https://github.com/qwertyuiop8899/streamvix/commit/41347dc4dd4c62e4cf823d9f77fb0f7f7c7ffdb5))
+* epg ([beaf195](https://github.com/qwertyuiop8899/streamvix/commit/beaf195fa7ee996b650a5f5b96160b4c65d296cf))
+* sk coll ([d5e2370](https://github.com/qwertyuiop8899/streamvix/commit/d5e237036f77cc260add148260d850cdb91054e1))
+
+## [1.9.38](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.37...v1.9.38) (2025-11-07)
+
+
+### Bug Fixes
+
+* rm ([cc614ff](https://github.com/qwertyuiop8899/streamvix/commit/cc614fff2ac501e99acdfbb7c2bffc2a091f1367))
+
+## [1.9.37](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.36...v1.9.37) (2025-11-06)
+
+
+### Bug Fixes
+
+* loonex ([adb9ac6](https://github.com/qwertyuiop8899/streamvix/commit/adb9ac69b461f423e1e4e0a868c77eeaa4ee3610))
+
+## [1.9.36](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.35...v1.9.36) (2025-11-06)
+
+
+### Bug Fixes
+
+* loonex and thisnot ([3911af2](https://github.com/qwertyuiop8899/streamvix/commit/3911af20aef485f10aa7a24b985a8ac6aac64931))
+
 ## [1.9.35](https://github.com/qwertyuiop8899/streamvix/compare/v1.9.34...v1.9.35) (2025-11-05)
 
 
