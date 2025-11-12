@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.10.8](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.7...v1.10.8) (2025-11-11)
+
+
+### Bug Fixes
+
+* ismovie ([a47051f](https://github.com/qwertyuiop8899/streamvix/commit/a47051fa70a354b5b171bf4a0425c5df0b42d32f))
+
+## [1.10.7](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.6...v1.10.7) (2025-11-10)
+
+
+### Bug Fixes
+
+* proxy ([b2ab050](https://github.com/qwertyuiop8899/streamvix/commit/b2ab0500140eb9996b122206218a414cd86b4af7))
+
+## [1.10.7](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.6...v1.10.7) (2025-11-10)
+
+
+### Bug Fixes
+
+* proxy ([b2ab050](https://github.com/qwertyuiop8899/streamvix/commit/b2ab0500140eb9996b122206218a414cd86b4af7))
+
 ## [1.10.6](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.5...v1.10.6) (2025-11-10)
 
 
