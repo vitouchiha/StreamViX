@@ -1,5 +1,65 @@
 # Changelog
 
+## [1.10.19](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.18...v1.10.19) (2025-11-25)
+
+
+### Bug Fixes
+
+* freechannel ([8efe9e6](https://github.com/qwertyuiop8899/streamvix/commit/8efe9e6ff3bcf5a7763ee4531235b5776702be06))
+* la7 ([b3ce421](https://github.com/qwertyuiop8899/streamvix/commit/b3ce421fb0b622a7be56891e01839376202b171c))
+
+## [1.10.18](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.17...v1.10.18) (2025-11-25)
+
+
+### Bug Fixes
+
+* la7 ([538fe3c](https://github.com/qwertyuiop8899/streamvix/commit/538fe3c02960afbf7c57f2bd52f5de875cc096a9))
+
+## [1.10.17](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.16...v1.10.17) (2025-11-24)
+
+
+### Bug Fixes
+
+* ppv ([53c24bb](https://github.com/qwertyuiop8899/streamvix/commit/53c24bb2cf54cacf759cbe0774992b871886ce53))
+* toon dvd string ([387285e](https://github.com/qwertyuiop8899/streamvix/commit/387285e8b74ee8bb3b70ac7b6f7a81a2ec041d1e))
+
+## [1.10.17](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.16...v1.10.17) (2025-11-24)
+
+
+### Bug Fixes
+
+* ppv ([53c24bb](https://github.com/qwertyuiop8899/streamvix/commit/53c24bb2cf54cacf759cbe0774992b871886ce53))
+* toon dvd string ([387285e](https://github.com/qwertyuiop8899/streamvix/commit/387285e8b74ee8bb3b70ac7b6f7a81a2ec041d1e))
+
+## [1.10.16](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.15...v1.10.16) (2025-11-24)
+
+
+### Bug Fixes
+
+* offset ([7c213c3](https://github.com/qwertyuiop8899/streamvix/commit/7c213c3980f9d36420aa00e0ee554548cb6c368b))
+
+## [1.10.15](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.14...v1.10.15) (2025-11-22)
+
+
+### Bug Fixes
+
+* bump ([05cb338](https://github.com/qwertyuiop8899/streamvix/commit/05cb3387c2a42fe07e04bd4c2395d7407bfcb4f1))
+* bump version ([5d77278](https://github.com/qwertyuiop8899/streamvix/commit/5d77278bf6b254be5360599e1dfd03ed9724a8c1))
+
+## [1.10.14](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.13...v1.10.14) (2025-11-22)
+
+
+### Bug Fixes
+
+* addon reload ([c2d1bcc](https://github.com/qwertyuiop8899/streamvix/commit/c2d1bcc70829bb183dfdbd6ba93e6fa8e83c4ead))
+
+## [1.10.13](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.12...v1.10.13) (2025-11-22)
+
+
+### Bug Fixes
+
+* add ppv ([5599971](https://github.com/qwertyuiop8899/streamvix/commit/5599971ea103a8bb07000c82ef16be491685de79))
+
 ## [1.10.12](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.11...v1.10.12) (2025-11-20)
 
 

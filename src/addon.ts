@@ -594,7 +594,7 @@ function isCfDlhdProxy(u: string): boolean { return extractDlhdIdFromCf(u) !== n
 // ================= MANIFEST BASE (restored) =================
 const baseManifest: Manifest = {
     id: "org.stremio.vixcloud",
-    version: "8.8.23",
+    version: "9.1.23",
     name: "StreamViX | Elfhosted",
     description: "StreamViX addon con VixSRC, Guardaserie, Altadefinizione, AnimeUnity, AnimeSaturn, AnimeWorld, Eurostreaming, TV ed Eventi Live",
     background: "https://raw.githubusercontent.com/qwertyuiop8899/StreamViX/refs/heads/main/public/backround.png",
@@ -640,7 +640,8 @@ const baseManifest: Manifest = {
                         "Darts",
                         "Baseball",
                         "NFL",
-                        "THISNOT"
+                        "THISNOT",
+                        "PPV"
                     ]
                 },
                 { name: "genre", isRequired: false },
@@ -1072,6 +1073,54 @@ function _loadStaticChannelsIfChanged(force = false) {
         console.log('[SPSO][INIT] poll ogni', intervalMs, 'ms');
     } catch (e) {
         console.log('[SPSO][INIT][ERR]', (e as any)?.message || e);
+    }
+})();
+
+// === PPV playlist enrichment ===
+(() => {
+    try {
+        // Always enable PPV unless explicitly disabled
+        let enableRaw = (process.env.PPV_ENABLE || '1').toString().toLowerCase();
+        if (!['1','true','on','yes'].includes(enableRaw)) return;
+        
+        const pythonBin = process.env.PYTHON_BIN || 'python3';
+        const scriptPath = path.join(__dirname, '..', 'ppv_streams.py');
+        if (!fs.existsSync(scriptPath)) { console.log('[PPV][INIT] script non trovato', scriptPath); return; }
+        
+        // const intervalMs = Math.max(60000, parseInt(process.env.PPV_POLL_INTERVAL_MS || '300000', 10)); // default 5m
+        
+        function runOnce(tag: string) {
+            const env: any = { ...process.env };
+            const t0 = Date.now();
+            const child = spawn(pythonBin, [scriptPath], { env });
+            let out=''; let err='';
+            child.stdout.on('data', d=> out+=d.toString());
+            child.stderr.on('data', d=> err+=d.toString());
+            child.on('close', code => {
+                const ms = Date.now() - t0;
+                if (out.trim()) out.split(/\r?\n/).forEach(l=>console.log('[PPV][OUT]', l));
+                if (err.trim()) err.split(/\r?\n/).forEach(l=>console.warn('[PPV][ERR]', l));
+                console.log(`[PPV][RUN] done code=${code} ms=${ms}`);
+            });
+        }
+        
+        // Initial run with delay
+        setTimeout(()=> {
+            console.log('[PPV][INIT] Starting initial run...');
+            runOnce('init');
+        }, 10000); 
+        
+        // Scheduler: Run every 5 minutes to keep LIVE/NOT LIVE status fresh
+        // Since it only parses a remote M3U, it's lightweight.
+        const PPV_INTERVAL = 5 * 60 * 1000; // 5 minutes
+        setInterval(() => {
+            console.log(`[PPV][SCHEDULER] Triggering scheduled update...`);
+            runOnce('scheduled');
+        }, PPV_INTERVAL);
+        
+        console.log(`[PPV][INIT] Scheduler attivo: aggiornamento ogni ${PPV_INTERVAL/1000}s`);
+    } catch (e) {
+        console.log('[PPV][INIT][ERR]', (e as any)?.message || e);
     }
 })();
 
@@ -1839,6 +1888,7 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                     genreMap['bundesliga'] = 'bundesliga';
                     genreMap['ligue 1'] = 'ligue1';
                     genreMap['thisnot'] = 'thisnot';
+                    genreMap['ppv'] = 'ppv';
                     const target = genreMap[norm] || norm;
                     requestedSlug = target;
                     
@@ -2672,8 +2722,15 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                                 resolved.push({ url: finalUrl, title: providerTitle });
                                 debugLog(`[DynamicStreams][ON-DEMAND] Link DLHD diretto proxy/hls: ${providerTitle} -> ${finalUrl}`);
                             } else {
-                                // Niente MFP = skip (come richiesto per evitare link diretti DLHD)
-                                debugLog(`[DynamicStreams][ON-DEMAND] MFP mancante, skip link DLHD: ${providerTitle}`);
+                                // Niente MFP
+                                // Se è un canale PPV o l'URL è già un proxy, lo permettiamo diretto
+                                if (d.url.includes('/proxy/') || (channel as any).id.startsWith('ppv_')) {
+                                     resolved.push({ url: d.url, title: providerTitle });
+                                     debugLog(`[DynamicStreams][ON-DEMAND] MFP mancante, ma URL proxy/PPV consentito diretto: ${providerTitle}`);
+                                } else {
+                                     // Niente MFP = skip (come richiesto per evitare link diretti DLHD)
+                                     debugLog(`[DynamicStreams][ON-DEMAND] MFP mancante, skip link DLHD: ${providerTitle}`);
+                                }
                             }
                         }
                         
@@ -3010,7 +3067,7 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                         if ((channel as any).staticUrlF) {
                             const originalF = (channel as any).staticUrlF;
                             const nameLower = (channel.name || '').toLowerCase().trim();
-                            const raiMpdSet = new Set(['rai 1','rai 2','rai 3']); // Solo questi devono passare da proxy MPD
+                            const raiMpdSet = new Set(['']); // Solo questi devono passare da proxy MPD before 'rai 1','rai 2','rai 3'
                             // Altri canali RAI (4,5,Movie,Premium, ecc.) restano DIRECT (niente proxy HLS come richiesto)
                             let finalFUrl = originalF;
                             if (mfpUrl && mfpPsw && raiMpdSet.has(nameLower)) {
@@ -4055,7 +4112,7 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                 let vixsrcScheduled = false; // per evitare doppia esecuzione nel blocco sequenziale più sotto
 
                 // Gestione parallela AnimeUnity / AnimeSaturn / AnimeWorld + Loonex
-                if ((id.startsWith('kitsu:') || id.startsWith('mal:') || id.startsWith('tt') || id.startsWith('tmdb:')) && (animeUnityEnabled || animeSaturnEnabled || animeWorldEnabled || guardaSerieEnabled || guardaHdEnabled || eurostreamingEnabled || loonexEnabled || vixsrcEnabled)) {
+                if ((id.startsWith('kitsu:') || id.startsWith('mal:') || id.startsWith('tt') || id.startsWith('tmdb:')) && (animeUnityEnabled || animeSaturnEnabled || animeWorldEnabled || guardaSerieEnabled || guardaHdEnabled || eurostreamingEnabled || loonexEnabled || toonitaliaEnabled || streamingWatchEnabled || cb01Enabled || vixsrcEnabled)) {
                     const animeUnityConfig: AnimeUnityConfig = {
                         enabled: animeUnityEnabled,
                         mfpUrl: config.mediaFlowProxyUrl || process.env.MFP_URL || '',
@@ -4515,7 +4572,7 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                     }
 
                     // ToonItalia (serie TV/Anime) - Ricerca dinamica via TMDb
-                    if (toonitaliaEnabled && type === 'series' && seasonNumber != null && episodeNumber != null) {
+                    if (toonitaliaEnabled && seasonNumber != null && episodeNumber != null) {
                         providerPromises.push(runProvider('ToonItalia', true, async () => {
                             const { toonitalia } = await import('./providers/toonitalia-provider');
                             
@@ -4545,7 +4602,7 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                                 }
                             });
                             return { streams };
-                        }, 'ToonItalia'));
+                        }, 'ToonItalia', false, 25000));
                     }
 
 
@@ -5415,6 +5472,56 @@ app.get('/spso/reload', async (req: Request, res: Response) => {
         const took = Date.now() - started;
         const clip = (s: string) => s && s.length > 1200 ? s.slice(-1200) : s;
         return res.json({ ok: true, force, ms: took, stdout: clip(execResult.stdout), stderr: clip(execResult.stderr) });
+    } catch (e: any) {
+        return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+});
+// =============================================================
+
+// ================= PPV FORCED RELOAD ENDPOINT =====================
+// GET /ppv/reload?token=XYZ
+// Esegue ppv_streams.py una volta
+app.get('/ppv/reload', async (req: Request, res: Response) => {
+    try {
+        const requiredToken = process?.env?.PPV_RELOAD_TOKEN;
+        const provided = (req.query.token as string) || '';
+        if (requiredToken && provided !== requiredToken) {
+            return res.status(403).json({ ok: false, error: 'Forbidden' });
+        }
+        
+        const scriptPath = path.join(__dirname, '..', 'ppv_streams.py');
+        if (!fs.existsSync(scriptPath)) {
+            return res.status(404).json({ ok: false, error: 'ppv_streams.py not found' });
+        }
+        
+        const pythonBin = process.env.PYTHON_BIN || 'python3';
+        const env: any = { ...process.env };
+        
+        const started = Date.now();
+        const { execFile } = require('child_process');
+        
+        const execResult = await new Promise<{ stdout: string; stderr: string; code: number }>(resolve => {
+            const child = execFile(pythonBin, [scriptPath], { env }, (err: any, stdout: string, stderr: string) => {
+                resolve({ stdout, stderr, code: err && typeof err.code === 'number' ? err.code : 0 });
+            });
+            child.on('error', (e: any) => {
+                console.log('[PPV][RELOAD][ERR]', e?.message || e);
+            });
+        });
+        
+        // Ricarica dynamic in memoria
+        try { invalidateDynamicChannels(); loadDynamicChannels(true); } catch {}
+        
+        const took = Date.now() - started;
+        const clip = (s: string) => s && s.length > 1200 ? s.slice(-1200) : s;
+        
+        return res.json({ 
+            ok: true, 
+            ms: took, 
+            stdout: clip(execResult.stdout), 
+            stderr: clip(execResult.stderr),
+            channels: loadDynamicChannels(true).filter((c: any) => c.category === 'PPV').length
+        });
     } catch (e: any) {
         return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
