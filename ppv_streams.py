@@ -95,7 +95,7 @@ def process_channels(raw_channels):
         
         final_name = name_clean
         event_start = None
-        status_prefix = ""
+        live_status = "🇬🇧 PPV"  # Default status for stream title
         
         if match:
             event_name = match.group(1).strip()
@@ -109,25 +109,31 @@ def process_channels(raw_channels):
                 
                 # Logic: LIVE if within 30 mins (1800s) of start or started
                 # NOT LIVE if > 30 mins to start
-                # Note: This depends on 'now' and 'event_dt' being in same timezone context
                 time_diff = (event_dt - now).total_seconds()
                 
                 if time_diff > 1800: # More than 30 mins to go
-                    status_prefix = "[NOT LIVE] "
+                    live_status = "🚫 NOT LIVE"
                 else:
-                    status_prefix = "[LIVE] "
+                    live_status = "🔴 LIVE"
 
                 # Create ISO eventStart
                 event_start = f"{date_str}T{time_str}:00Z"
+                
+                # Format date for display: DD/MM
+                day = date_str[8:10]
+                month = date_str[5:7]
+                date_display = f"{day}/{month}"
+                
+                # Channel name: emoji + event + clock + time - date
+                final_name = f"{emoji} {event_name} ⏰ {time_str} - {date_display}".strip()
+                
             except Exception as e:
                 print(f"Error parsing date for {event_name}: {e}")
-
-            # User request: remove date from final name (kept only in eventStart)
-            # Add emoji only to name (status goes to stream title)
-            final_name = f"{emoji} {event_name}".strip()
+                # Fallback if date parsing fails
+                final_name = f"{emoji} {event_name}".strip()
             
         else:
-            # If regex doesn't match, just prepend emoji
+            # If regex doesn't match, just prepend emoji (no date info)
             final_name = f"{emoji} {name_clean}".strip()
 
         # Generate a stable ID based on URL
@@ -145,7 +151,7 @@ def process_channels(raw_channels):
             "category": "PPV", # The main category
             "streams": [{
                 "url": ch["url"],
-                "title": f"{status_prefix}PPV Stream"
+                "title": live_status  # 🚫 NOT LIVE or 🔴 LIVE
             }]
         }
         

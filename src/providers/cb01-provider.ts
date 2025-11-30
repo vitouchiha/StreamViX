@@ -3,7 +3,7 @@ thanks to @urlomythus for the code https://github.com/UrloMythus/MammaMia/blob/m
  * Replica la logica essenziale di cb01.py limitandosi a:
  *  - Ricerca film: https://cb01net.lol/?s=<query>
  *  - Ricerca serie: https://cb01net.lol/serietv/?s=<query>
- *  - Film: usa iframen2 (Streaming HD) se presente, altrimenti iframen1
+ *  - Film: usa iframen2 (Streaming HD) se presente, altrimenti iframen1 
  *  - Serie: blocco STAGIONE X e match episodio -> prima occorrenza mixdrop/stayonline
  *  - Bypass stayonline (POST ajax) -> ottiene embed Mixdrop
  *  - Incapsula tramite MediaFlow extractor (redirect_stream=false) e ricostruisce link proxy /proxy/stream
@@ -388,7 +388,7 @@ export class Cb01Provider {
   }
 
   private async wrapMediaFlow(mixdropEmbed:string, pageHtml:string, ep?:{season:number;episode:number}, metaOverride?: {file:string|null; size:string|null}):Promise<StreamForStremio|null>{
-  const { mfpUrl, mfpPassword } = this.config; if(!mfpUrl || !mfpPassword) return null;
+  const { mfpUrl, mfpPassword } = this.config; if(!mfpUrl) return null;
   // Normalizza base URL mediaflow evitando doppio slash
   const mfpBase = mfpUrl.replace(/\/+$/, '');
     const originalEmbed = mixdropEmbed.trim();
@@ -402,7 +402,8 @@ export class Cb01Provider {
       log('mixdrop embed no id pattern, using original', { original: originalEmbed });
     }
     const encodedD = encodeURIComponent(dUrl);
-  const extractor = `${mfpBase}/extractor/video?host=Mixdrop&api_password=${encodeURIComponent(mfpPassword)}&d=${encodedD}&redirect_stream=false`;
+  const passwordParamCb01 = mfpPassword ? `&api_password=${encodeURIComponent(mfpPassword)}` : '';
+  const extractor = `${mfpBase}/extractor/video?host=Mixdrop${passwordParamCb01}&d=${encodedD}&redirect_stream=false`;
     log('extractor single call', { dUrl, encodedD, extractor });
     let data:any = null;
     try {
@@ -424,7 +425,8 @@ export class Cb01Provider {
     const headers = data.request_headers || {};
     const ua = headers['user-agent'] || headers['User-Agent'] || this.userAgent;
     const ref = headers['referer'] || headers['Referer'] || 'https://mixdrop.ps/';
-  const finalBase = `${mfpBase}/proxy/stream?api_password=${encodeURIComponent(mfpPassword)}&d=${encodeURIComponent(dest)}&h_user-agent=${encodeURIComponent(ua)}&h_referer=${encodeURIComponent(ref)}`;
+  const passwordParam = mfpPassword ? `api_password=${encodeURIComponent(mfpPassword)}&` : '';
+  const finalBase = `${mfpBase}/proxy/stream?${passwordParam}d=${encodeURIComponent(dest)}&h_user-agent=${encodeURIComponent(ua)}&h_referer=${encodeURIComponent(ref)}`;
   const meta = metaOverride || this.extractStayonlineMeta(pageHtml) || { file:null, size: undefined };
   // Nuovo formato richiesto:
   // Linea 1: Nome completo file (con estensione) + [ITA]
