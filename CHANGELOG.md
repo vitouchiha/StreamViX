@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.10.29](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.28...v1.10.29) (2025-11-30)
+
+
+### Bug Fixes
+
+* rm ([a8daef2](https://github.com/qwertyuiop8899/streamvix/commit/a8daef259a203b4faf8c7d8745a26a0c8b985f62))
+
+## [1.10.28](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.27...v1.10.28) (2025-11-30)
+
+
+### Bug Fixes
+
+* remove SW e streamtape ([3ba6b5e](https://github.com/qwertyuiop8899/streamvix/commit/3ba6b5ebc65e7d10a9c1feb065adadbe1d891d9b))
+
+## [1.10.27](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.26...v1.10.27) (2025-11-30)
+
+
+### Bug Fixes
+
+* disable vixsrc ([80975a2](https://github.com/qwertyuiop8899/streamvix/commit/80975a294e3bbd05bebb49dea40c7b15d0d90d04))
+
+## [1.10.26](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.25...v1.10.26) (2025-11-30)
+
+
+### Bug Fixes
+
+* mfp cache ([972248b](https://github.com/qwertyuiop8899/streamvix/commit/972248ba94fc52669a9d062a714573cfb425c895))
+
 ## [1.10.25](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.24...v1.10.25) (2025-11-30)
 
 
