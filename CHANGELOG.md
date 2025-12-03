@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.10.32](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.31...v1.10.32) (2025-12-02)
+
+
+### Bug Fixes
+
+* mpdxz ([63d073b](https://github.com/qwertyuiop8899/streamvix/commit/63d073b11d72e5f98894d646df8f9afc7a445bf7))
+
+## [1.10.31](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.30...v1.10.31) (2025-12-01)
+
+
+### Bug Fixes
+
+* gold ([66ea4cb](https://github.com/qwertyuiop8899/streamvix/commit/66ea4cb9c852e300d49b48495445029785e58a9b))
+* rm ([24b80d7](https://github.com/qwertyuiop8899/streamvix/commit/24b80d7e4eb3998f059e035a4c98bc4d96abd257))
+
+## [1.10.30](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.29...v1.10.30) (2025-12-01)
+
+
+### Bug Fixes
+
+* mfp url ([ac3133f](https://github.com/qwertyuiop8899/streamvix/commit/ac3133f238c35593861d988b21df1cccdd569be0))
+* rm2 ([b31f8f1](https://github.com/qwertyuiop8899/streamvix/commit/b31f8f1ab7988994df6b542372e4663a48143768))
+
 ## [1.10.29](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.28...v1.10.29) (2025-11-30)
 
 
