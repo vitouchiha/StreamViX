@@ -1,5 +1,52 @@
 # Changelog
 
+## [1.10.40](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.39...v1.10.40) (2025-12-05)
+
+
+### Bug Fixes
+
+* freeshot ([f435165](https://github.com/qwertyuiop8899/streamvix/commit/f4351658c701a9cd962b5c361c78a991006caa1e))
+
+## [1.10.39](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.38...v1.10.39) (2025-12-05)
+
+
+### Bug Fixes
+
+* landing ([0e80304](https://github.com/qwertyuiop8899/streamvix/commit/0e8030424ac111fbab356806f894f1b2acccff2e))
+* rmUpdater.ts ([4eb8bc8](https://github.com/qwertyuiop8899/streamvix/commit/4eb8bc8bd70dcd7e65bc36d368126759f229673e))
+
+## [1.10.38](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.37...v1.10.38) (2025-12-05)
+
+
+### Bug Fixes
+
+* toonita ([3b619c8](https://github.com/qwertyuiop8899/streamvix/commit/3b619c82dc0f0c78d0ec1b62a53628fbf4915b4e))
+
+## [1.10.37](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.36...v1.10.37) (2025-12-05)
+
+
+### Bug Fixes
+
+* freeshot ([287cb66](https://github.com/qwertyuiop8899/streamvix/commit/287cb662c0ab96ad496ccdfe102191fe75f73f90))
+
+## [1.10.36](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.35...v1.10.36) (2025-12-04)
+
+
+### Bug Fixes
+
+* amstaff diff channels ([4a8c93b](https://github.com/qwertyuiop8899/streamvix/commit/4a8c93b859de4c74777aaeae1694fb29a9e2f441))
+* mpdx refresh safe ([88c60c4](https://github.com/qwertyuiop8899/streamvix/commit/88c60c4a94f32e600d1153a17565864cf76dfcff))
+* mpdz safe refresh ([23111cc](https://github.com/qwertyuiop8899/streamvix/commit/23111cc9e7d636f801832f26f98bcaab00eb14b7))
+* safe refresh rm ([ddcf4b0](https://github.com/qwertyuiop8899/streamvix/commit/ddcf4b097719804196ff8aedf60906b00ee52a02))
+
+## [1.10.35](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.34...v1.10.35) (2025-12-04)
+
+
+### Bug Fixes
+
+* cb01 accetta senza psw ([44f640c](https://github.com/qwertyuiop8899/streamvix/commit/44f640c94af5f9f4b87fa08fc94b9f742f6d7f42))
+* imeout ([b9d370c](https://github.com/qwertyuiop8899/streamvix/commit/b9d370c7329b7d8d8e5682cfa9c27abc7feefe36))
+
 ## [1.10.34](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.33...v1.10.34) (2025-12-03)
 
 
