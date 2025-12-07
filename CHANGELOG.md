@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.10.45](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.44...v1.10.45) (2025-12-07)
+
+
+### Bug Fixes
+
+* thisnot ([1ce8c8b](https://github.com/qwertyuiop8899/streamvix/commit/1ce8c8bea7356a0bf3191b456a48f672dfafa43f))
+* ts ([2f4b05b](https://github.com/qwertyuiop8899/streamvix/commit/2f4b05b94704b539f5c4ab2e362b9fc7acdd925e))
+
+## [1.10.44](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.43...v1.10.44) (2025-12-07)
+
+
+### Bug Fixes
+
+* mpd2 and fupdate ([7fe1498](https://github.com/qwertyuiop8899/streamvix/commit/7fe1498f3e852e7a19daea27d6c89103d5cca98c))
+
+## [1.10.43](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.42...v1.10.43) (2025-12-06)
+
+
+### Bug Fixes
+
+* add xevent ([aab06b0](https://github.com/qwertyuiop8899/streamvix/commit/aab06b0a20d36b8ccedc16f69c23303b5dda9089))
+
 ## [1.10.42](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.41...v1.10.42) (2025-12-06)
 
 
