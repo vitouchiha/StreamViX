@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.10.51](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.50...v1.10.51) (2025-12-08)
+
+
+### Bug Fixes
+
+* env mpdxUpdater.ts ([1053ecd](https://github.com/qwertyuiop8899/streamvix/commit/1053ecdf7bcf873b8c5731d5f1e85ba15597801a))
+
+## [1.10.50](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.49...v1.10.50) (2025-12-08)
+
+
+### Bug Fixes
+
+* mpdz ([57c7f33](https://github.com/qwertyuiop8899/streamvix/commit/57c7f33682607d71db5b2aceb179bd0c12087768))
+
+## [1.10.49](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.48...v1.10.49) (2025-12-08)
+
+
+### Bug Fixes
+
+* categorie live ([792da92](https://github.com/qwertyuiop8899/streamvix/commit/792da928da121bb40127ddb43b8a5688582016d8))
+
+## [1.10.48](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.47...v1.10.48) (2025-12-08)
+
+
+### Bug Fixes
+
+* guarda ([bbf4796](https://github.com/qwertyuiop8899/streamvix/commit/bbf47963a0aa24712abed1ad9de6ed17cc5c2540))
+
+## [1.10.47](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.46...v1.10.47) (2025-12-08)
+
+
+### Bug Fixes
+
+* proxy ([3fea713](https://github.com/qwertyuiop8899/streamvix/commit/3fea713295cef804ebf89a1bedf9c62e36cbd69b))
+* proxy guardoserie.ts ([6c2b348](https://github.com/qwertyuiop8899/streamvix/commit/6c2b3480d48e0eaa5cfa86237ad00d457c8721a7))
+
 ## [1.10.46](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.45...v1.10.46) (2025-12-08)
 
 
