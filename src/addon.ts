@@ -40,6 +40,7 @@ import { startRmScheduler, updateRmChannels } from './utils/rmUpdater';
 import { startThisNotUpdater, updateThisNotChannels } from './utils/thisnotChannels';
 import { startMpdzScheduler, updateMpdzChannels } from './utils/mpdzUpdater';
 import { startMpdxScheduler, updateMpdxChannels } from './utils/mpdxUpdater';
+import { startZEventiScheduler, updateZEventiChannels } from './utils/zEventiUpdater';
 import { getGuardoserieStreams } from './providers/guardoserie';
 import { getGuardaflixStreams } from './providers/guardaflix';
 
@@ -597,7 +598,7 @@ function isCfDlhdProxy(u: string): boolean { return extractDlhdIdFromCf(u) !== n
 // ================= MANIFEST BASE (restored) =================
 const baseManifest: Manifest = {
     id: "org.stremio.vixcloud",
-    version: "9.4.23",
+    version: "9.5.23",
     name: "StreamViX | Elfhosted",
     description: "StreamViX addon con VixSRC, Guardaserie, Altadefinizione, AnimeUnity, AnimeSaturn, AnimeWorld, Eurostreaming, TV ed Eventi Live",
     background: "https://raw.githubusercontent.com/qwertyuiop8899/StreamViX/refs/heads/main/public/backround.png",
@@ -638,6 +639,7 @@ const baseManifest: Manifest = {
                     name: "genre",
                     options: [
                         "X-Eventi",
+                        "Z-Eventi",
                         "THISNOT",
                         "Serie A",
                         "Serie B",
@@ -2471,6 +2473,45 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                             }
                         }
 
+                        // === Z-Eventi EARLY RETURN: MPD con chiavi - costruisce URL proxy usando config utente ===
+                        const isZEventi = channelCategory === 'Z-EVENTI' || (channel as any).id?.startsWith('zeventi_');
+                        if (isZEventi) {
+                            const zStreams: Stream[] = [];
+                            const dArr = Array.isArray((channel as any).dynamicDUrls) ? (channel as any).dynamicDUrls : [];
+
+                            if (mfpUrl) {
+                                const passwordParam = mfpPsw ? `api_password=${encodeURIComponent(mfpPsw)}&` : '';
+
+                                for (const d of dArr) {
+                                    if (d.url) {
+                                        // d.url è nel formato: mpdUrl&key_id=kids&key=keys
+                                        // Dobbiamo costruire: {mfpUrl}/proxy/mpd/manifest.m3u8?{passwordParam}d={encodedMpdUrl}&key_id=...&key=...
+                                        const urlParts = d.url.split('&');
+                                        const baseUrl = urlParts[0];
+                                        const additionalParams = urlParts.slice(1);
+
+                                        let proxyUrl = `${mfpUrl}/proxy/mpd/manifest.m3u8?${passwordParam}d=${encodeURIComponent(baseUrl)}`;
+
+                                        for (const param of additionalParams) {
+                                            if (param) {
+                                                proxyUrl += `&${param}`;
+                                            }
+                                        }
+
+                                        zStreams.push({
+                                            url: proxyUrl,
+                                            name: '🔴 LIVE',
+                                            title: d.title || 'Z-Eventi'
+                                        } as any);
+                                    }
+                                }
+                                console.log(`[Z-Eventi] ✅ Canale Z-Eventi rilevato: ${channel.id} - restituisco ${zStreams.length} stream proxati`);
+                                return { streams: zStreams };
+                            } else {
+                                console.log(`[Z-Eventi] ⚠️ MFP URL mancante, impossibile proxare canali Z-Eventi`);
+                            }
+                        }
+
                         const dArr = Array.isArray((channel as any).dynamicDUrls) ? (channel as any).dynamicDUrls : [];
                         console.log(`[DynamicStreams] Channel ${channel.id} dynamicDUrls count=${dArr.length}`);
                         if (dArr.length === 0) {
@@ -4261,8 +4302,11 @@ function createBuilder(initialConfig: AddonConfig = {}) {
                 })();
                 let vixsrcScheduled = false; // per evitare doppia esecuzione nel blocco sequenziale più sotto
 
+                const guardoserieEnabled = (config.guardoserieEnabled === true);
+                const guardaflixEnabled = (config.guardaflixEnabled === true);
+
                 // Gestione parallela AnimeUnity / AnimeSaturn / AnimeWorld + Loonex
-                if ((id.startsWith('kitsu:') || id.startsWith('mal:') || id.startsWith('tt') || id.startsWith('tmdb:')) && (animeUnityEnabled || animeSaturnEnabled || animeWorldEnabled || guardaSerieEnabled || guardaHdEnabled || eurostreamingEnabled || loonexEnabled || toonitaliaEnabled || cb01Enabled || vixsrcEnabled)) {
+                if ((id.startsWith('kitsu:') || id.startsWith('mal:') || id.startsWith('tt') || id.startsWith('tmdb:')) && (animeUnityEnabled || animeSaturnEnabled || animeWorldEnabled || guardaSerieEnabled || guardoserieEnabled || guardaflixEnabled || guardaHdEnabled || eurostreamingEnabled || loonexEnabled || toonitaliaEnabled || cb01Enabled || vixsrcEnabled)) {
                     const animeUnityConfig: AnimeUnityConfig = {
                         enabled: animeUnityEnabled,
                         mfpUrl: mfpUrl,
@@ -5742,6 +5786,29 @@ app.get('/mpdx/update', async (req: Request, res: Response) => {
 });
 // =============================================================
 
+// ================= MANUAL ZEVENTI UPDATE ENDPOINT ==============
+// GET /zeventi/update - Forza aggiornamento canali Z-Eventi (serieaz + coppez)
+app.get('/zeventi/update', async (req: Request, res: Response) => {
+    try {
+        console.log('[Z-Eventi][API] Manual update triggered via /zeventi/update');
+        const { updateZEventiChannels } = await import('./utils/zEventiUpdater');
+        const count = await updateZEventiChannels();
+
+        // Force reload dynamic channels
+        loadDynamicChannels(true);
+
+        return res.json({
+            ok: true,
+            count,
+            message: `Updated ${count} Z-Eventi channels`
+        });
+    } catch (e: any) {
+        console.error('[Z-Eventi][API] Error:', e);
+        return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+});
+// =============================================================
+
 // ================= MANUAL PURGE ENDPOINT =====================
 // Esegue la stessa logica delle 02:00: rimuove dal file gli eventi del giorno precedente
 app.get('/static/fupdate', async (req: Request, res: Response) => {
@@ -5751,10 +5818,13 @@ app.get('/static/fupdate', async (req: Request, res: Response) => {
         htmlLog.push('<h1>🚀 Force Update All Channels</h1>');
         htmlLog.push('<ul>');
 
-        // Amstaff
+        let totalUpdates = 0;
+
+        // Amstaff (skipReload=true per evitare reload multipli)
         try {
             const { updateAmstaffChannels } = await import('./utils/amstaffUpdater');
-            const c = await updateAmstaffChannels(true);
+            const c = await updateAmstaffChannels(true, true); // force=true, skipReload=true
+            totalUpdates += c;
             htmlLog.push(`<li>✅ <strong>Amstaff</strong>: ${c} channels updated (FORCED)</li>`);
         } catch (e: any) {
             htmlLog.push(`<li>❌ <strong>Amstaff</strong>: Error: ${e.message}</li>`);
@@ -5763,7 +5833,8 @@ app.get('/static/fupdate', async (req: Request, res: Response) => {
         // RM (MPD2)
         try {
             const { updateRmChannels } = await import('./utils/rmUpdater');
-            const c = await updateRmChannels(true);
+            const c = await updateRmChannels(true, true); // force=true, skipReload=true
+            totalUpdates += c;
             htmlLog.push(`<li>✅ <strong>RM (MPD2)</strong>: ${c} channels updated (FORCED)</li>`);
         } catch (e: any) {
             htmlLog.push(`<li>❌ <strong>RM (MPD2)</strong>: Error: ${e.message}</li>`);
@@ -5772,7 +5843,8 @@ app.get('/static/fupdate', async (req: Request, res: Response) => {
         // MPDz
         try {
             const { updateMpdzChannels } = await import('./utils/mpdzUpdater');
-            const c = await updateMpdzChannels(true);
+            const c = await updateMpdzChannels(true, true); // force=true, skipReload=true
+            totalUpdates += c;
             htmlLog.push(`<li>✅ <strong>MPDz</strong>: ${c} channels updated (FORCED)</li>`);
         } catch (e: any) {
             htmlLog.push(`<li>❌ <strong>MPDz</strong>: Error: ${e.message}</li>`);
@@ -5781,13 +5853,14 @@ app.get('/static/fupdate', async (req: Request, res: Response) => {
         // MPDx
         try {
             const { updateMpdxChannels } = await import('./utils/mpdxUpdater');
-            const c = await updateMpdxChannels(true);
+            const c = await updateMpdxChannels(true, true); // force=true, skipReload=true
+            totalUpdates += c;
             htmlLog.push(`<li>✅ <strong>MPDx</strong>: ${c} channels updated (FORCED)</li>`);
         } catch (e: any) {
             htmlLog.push(`<li>❌ <strong>MPDx</strong>: Error: ${e.message}</li>`);
         }
 
-        // ThisNot
+        // ThisNot (non scrive su tv_channels.json, scrive su /tmp/thisnot_channels.json)
         try {
             const { updateThisNotChannels } = await import('./utils/thisnotChannels');
             await updateThisNotChannels();
@@ -5796,8 +5869,46 @@ app.get('/static/fupdate', async (req: Request, res: Response) => {
             htmlLog.push(`<li>❌ <strong>ThisNot</strong>: Error: ${e.message}</li>`);
         }
 
+        // Z-Eventi (scrive su /tmp/z_eventi.json)
+        try {
+            const { updateZEventiChannels } = await import('./utils/zEventiUpdater');
+            const c = await updateZEventiChannels();
+            htmlLog.push(`<li>✅ <strong>Z-Eventi</strong>: ${c} channels updated (FORCED)</li>`);
+        } catch (e: any) {
+            htmlLog.push(`<li>❌ <strong>Z-Eventi</strong>: Error: ${e.message}</li>`);
+        }
+
         htmlLog.push('</ul>');
-        htmlLog.push('<p><em>Reload trigger initiated by individual updaters. Please wait a few seconds.</em></p>');
+
+        // === UNICO RELOAD FINALE ===
+        htmlLog.push('<h2>🔄 Final Reload</h2>');
+        try {
+            // Forza reload dei canali statici in memoria
+            _loadStaticChannelsIfChanged(true);
+
+            // Conta canali con vari campi MPD
+            let mpdCount = 0, mpd2Count = 0, mpdzCount = 0, mpdxCount = 0;
+            for (const c of staticBaseChannels) {
+                if (c && (c as any).staticUrlMpd) mpdCount++;
+                if (c && (c as any).staticUrlMpd2) mpd2Count++;
+                if (c && (c as any).staticUrlMpdz) mpdzCount++;
+                if (c && (c as any).staticUrlMpdx) mpdxCount++;
+            }
+
+            htmlLog.push(`<p>✅ <strong>Reload completato!</strong></p>`);
+            htmlLog.push(`<ul>`);
+            htmlLog.push(`<li>Total channels in memory: <strong>${staticBaseChannels.length}</strong></li>`);
+            htmlLog.push(`<li>staticUrlMpd (Amstaff): <strong>${mpdCount}</strong></li>`);
+            htmlLog.push(`<li>staticUrlMpd2 (RM): <strong>${mpd2Count}</strong></li>`);
+            htmlLog.push(`<li>staticUrlMpdz: <strong>${mpdzCount}</strong></li>`);
+            htmlLog.push(`<li>staticUrlMpdx: <strong>${mpdxCount}</strong></li>`);
+            htmlLog.push(`</ul>`);
+            htmlLog.push(`<p>Total updates this run: <strong>${totalUpdates}</strong></p>`);
+        } catch (e: any) {
+            htmlLog.push(`<p>❌ Reload error: ${e.message}</p>`);
+        }
+
+        htmlLog.push('<p><em>All updaters completed and channels reloaded in memory.</em></p>');
         htmlLog.push('</body></html>');
         res.send(htmlLog.join(''));
     } catch (e: any) {
@@ -6177,6 +6288,16 @@ try {
     console.log('✅ MPDx auto-updater attivato (ogni 23 min)');
 } catch (e) {
     console.error('❌ Errore avvio MPDx updater:', e);
+}
+// ====================================================================
+
+// =============== ZEVENTI AUTO-UPDATER ==============================
+// Avvia aggiornamento automatico canali Z-Eventi (serieaz + coppez) ogni 25 minuti
+try {
+    startZEventiScheduler(1500000);
+    console.log('✅ Z-Eventi auto-updater attivato (ogni 25 min)');
+} catch (e) {
+    console.error('❌ Errore avvio Z-Eventi updater:', e);
 }
 // ====================================================================
 

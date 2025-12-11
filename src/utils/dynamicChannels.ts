@@ -259,8 +259,27 @@ export function loadDynamicChannels(force = false): DynamicChannel[] {
       }
     }
 
-    // Mergia i quattro array
-    const data = [...mainData, ...thisnotData, ...ppvData, ...xEventiData];
+    // Carica z_eventi.json (Z-Eventi separato)
+    let zEventiData: any[] = [];
+    const ZEVENTI_FILE = '/tmp/z_eventi.json';
+    if (fs.existsSync(ZEVENTI_FILE)) {
+      try {
+        const zeRaw = fs.readFileSync(ZEVENTI_FILE, 'utf-8');
+        if (zeRaw.trim().length >= 2) {
+          const zeParsed = JSON.parse(zeRaw);
+          if (Array.isArray(zeParsed)) {
+            zEventiData = zeParsed;
+            try { console.log(`[DynamicChannels] 🔗 Mergiati ${zEventiData.length} canali Z-Eventi da ${ZEVENTI_FILE}`); } catch { }
+          }
+        }
+      } catch (zeErr) {
+        try { console.warn('[DynamicChannels] Errore caricamento Z-Eventi file, skip:', (zeErr as any)?.message); } catch { }
+      }
+    }
+
+    // Mergia i cinque array
+    const data = [...mainData, ...thisnotData, ...ppvData, ...xEventiData, ...zEventiData];
+
 
     if (data.length === 0) {
       dynamicCache = [];
@@ -343,10 +362,10 @@ export function loadDynamicChannels(force = false): DynamicChannel[] {
       let removedPrevDay = 0;
       let removedExpiredAge = 0;
       const filtered: DynamicChannel[] = data.filter(ch => {
-        // THISNOT: mantieni SEMPRE tutti i canali ThisNot senza filtri temporali
+        // THISNOT, X-EVENTI, Z-EVENTI: mantieni SEMPRE senza filtri temporali
         const category = (ch.category || '').toString().toLowerCase();
-        if (category === 'thisnot') {
-          return true; // Skip tutti i filtri temporali per ThisNot
+        if (category === 'thisnot' || category === 'x-eventi' || category === 'z-eventi') {
+          return true; // Skip tutti i filtri temporali per queste categorie
         }
 
         if (!ch.eventStart) return true; // keep if undated
@@ -474,6 +493,12 @@ export function purgeOldDynamicEvents(): { before: number; after: number; remove
     const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
     const nowMs = nowRome.getTime();
     const filtered = data.filter((ch: DynamicChannel) => {
+      // THISNOT, X-EVENTI, Z-EVENTI: mantieni SEMPRE senza filtri temporali
+      const category = (ch.category || '').toString().toLowerCase();
+      if (category === 'thisnot' || category === 'x-eventi' || category === 'z-eventi') {
+        return true; // Skip tutti i filtri temporali per queste categorie
+      }
+
       if (!ch.eventStart) {
         // Usa createdAt per determinare età, se manca assegnalo ora e conserva (verrà valutato ai prossimi purge)
         if (!ch.createdAt) {

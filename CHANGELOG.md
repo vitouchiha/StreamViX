@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.10.56](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.55...v1.10.56) (2025-12-10)
+
+
+### Bug Fixes
+
+* event time ([f07a9a9](https://github.com/qwertyuiop8899/streamvix/commit/f07a9a91ed1494836474edbbe4c6a2d244a595f2))
+
+## [1.10.55](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.54...v1.10.55) (2025-12-10)
+
+
+### Bug Fixes
+
+* bump version ([6195641](https://github.com/qwertyuiop8899/streamvix/commit/619564109ba6fcbcfcaa11db13cf5c5b7607b94b))
+* update ([2dd21c9](https://github.com/qwertyuiop8899/streamvix/commit/2dd21c96b534eefed3943d4128b5518b8f72564a))
+
+## [1.10.54](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.53...v1.10.54) (2025-12-10)
+
+
+### Bug Fixes
+
+* zeventi ([ad0ec1e](https://github.com/qwertyuiop8899/streamvix/commit/ad0ec1e4a2fc39d97eb3eb87904012075845385f))
+* zeventi ([5572008](https://github.com/qwertyuiop8899/streamvix/commit/55720086545266153b51549dd7caa8285824be96))
+
+## [1.10.53](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.52...v1.10.53) (2025-12-10)
+
+
+### Bug Fixes
+
+* mpd ([d345754](https://github.com/qwertyuiop8899/streamvix/commit/d3457540c06dbbe64762b9479b4efc3317a53ff3))
+
+## [1.10.52](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.51...v1.10.52) (2025-12-09)
+
+
+### Bug Fixes
+
+* gs ga gf ([668b2ab](https://github.com/qwertyuiop8899/streamvix/commit/668b2abf5a4c3493c8b56bb20e6de58bea1f0514))
+
 ## [1.10.51](https://github.com/qwertyuiop8899/streamvix/compare/v1.10.50...v1.10.51) (2025-12-08)
 
 
